@@ -2,6 +2,7 @@
 
 import { compressPermission } from "../compress-permission"
 import { analyzeContextTokens } from "../commands/context"
+import { getActiveCompressionTargets } from "../commands/compression-targets"
 import type { PluginConfig } from "../config"
 import type { SessionState, WithParts } from "../state"
 import { formatTokenCount } from "../ui/utils"
@@ -164,6 +165,10 @@ export function PanelDialog(props: {
 }) {
     const theme = props.api.theme.current
     const canCompress = compressPermission(props.state, props.config) !== "deny"
+    const compressedTokens = getActiveCompressionTargets(props.state.prune.messages).reduce(
+        (total, target) => total + target.compressedTokens,
+        0,
+    )
     return (
         <DcpFrame api={props.api} eyebrow="DCP">
             <Card theme={theme} title="Views">
@@ -181,6 +186,14 @@ export function PanelDialog(props: {
                         onClick={props.onStats}
                     />
                 </box>
+            </Card>
+            <Card theme={theme} title="Compression">
+                <Metric
+                    theme={theme}
+                    label="Tokens compressed"
+                    value={`~${formatTokenCount(compressedTokens, true)}`}
+                    hint="tokens (active)"
+                />
             </Card>
             <Card theme={theme} title="Prompt">
                 {canCompress ? (
