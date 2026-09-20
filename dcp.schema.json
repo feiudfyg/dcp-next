@@ -252,6 +252,11 @@
                         "iteration": true
                     }
                 },
+                "allowPriorSummaryDrop": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Allow the model to discard previously compressed summaries inside a range by omitting their (bN) placeholder instead of nesting them"
+                },
                 "protectedTools": {
                     "type": "array",
                     "items": {

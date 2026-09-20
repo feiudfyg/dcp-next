@@ -31,6 +31,7 @@ export interface CompressConfig {
     iterationNudgeThreshold: number
     nudgeForce: "strong" | "soft"
     triggers: CompressTriggers
+    allowPriorSummaryDrop: boolean
     protectedTools: string[]
     protectTags: boolean
     protectUserMessages: boolean
@@ -131,6 +132,7 @@ export const VALID_CONFIG_KEYS = new Set([
     "compress.triggers.contextLimit",
     "compress.triggers.turn",
     "compress.triggers.iteration",
+    "compress.allowPriorSummaryDrop",
     "compress.protectedTools",
     "compress.protectTags",
     "compress.protectUserMessages",
@@ -446,6 +448,17 @@ export function validateConfigTypes(config: Record<string, any>): ValidationErro
                 }
             }
 
+            if (
+                compress.allowPriorSummaryDrop !== undefined &&
+                typeof compress.allowPriorSummaryDrop !== "boolean"
+            ) {
+                errors.push({
+                    key: "compress.allowPriorSummaryDrop",
+                    expected: "boolean",
+                    actual: typeof compress.allowPriorSummaryDrop,
+                })
+            }
+
             if (compress.protectedTools !== undefined && !Array.isArray(compress.protectedTools)) {
                 errors.push({
                     key: "compress.protectedTools",
@@ -720,6 +733,7 @@ const defaultConfig: PluginConfig = {
             turn: true,
             iteration: true,
         },
+        allowPriorSummaryDrop: false,
         protectedTools: [...COMPRESS_DEFAULT_PROTECTED_TOOLS],
         protectTags: false,
         protectUserMessages: false,
@@ -891,6 +905,7 @@ function mergeCompress(
             turn: override.triggers?.turn ?? base.triggers.turn,
             iteration: override.triggers?.iteration ?? base.triggers.iteration,
         },
+        allowPriorSummaryDrop: override.allowPriorSummaryDrop ?? base.allowPriorSummaryDrop,
         protectedTools: [...new Set([...base.protectedTools, ...(override.protectedTools ?? [])])],
         protectTags: override.protectTags ?? base.protectTags,
         protectUserMessages: override.protectUserMessages ?? base.protectUserMessages,

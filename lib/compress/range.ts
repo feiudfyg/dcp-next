@@ -1,7 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
 import type { ToolContext } from "./types"
 import { countTokens } from "../token-utils"
-import { RANGE_FORMAT_EXTENSION } from "../prompts/extensions/tool"
+import {
+    RANGE_FORMAT_EXTENSION,
+    RANGE_PRIOR_SUMMARY_DROP_EXTENSION,
+} from "../prompts/extensions/tool"
 import { finalizeSession, prepareSession, type NotificationEntry } from "./pipeline"
 import {
     appendProtectedPromptInfo,
@@ -10,6 +13,7 @@ import {
 } from "./protected-content"
 import {
     appendMissingBlockSummaries,
+    discardMissingBlockSummaries,
     injectBlockPlaceholders,
     parseBlockPlaceholders,
     resolveRanges,
@@ -57,8 +61,13 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
     ctx.prompts.reload()
     const runtimePrompts = ctx.prompts.getRuntimePrompts()
 
+    const priorSummaryDropExtension = ctx.config.compress.allowPriorSummaryDrop
+        ? RANGE_PRIOR_SUMMARY_DROP_EXTENSION
+        : ""
+
     return tool({
-        description: runtimePrompts.compressRange + RANGE_FORMAT_EXTENSION,
+        description:
+            runtimePrompts.compressRange + RANGE_FORMAT_EXTENSION + priorSummaryDropExtension,
         args: buildSchema(),
         async execute(args, toolCtx) {
             const input = args as CompressRangeToolArgs
@@ -131,12 +140,18 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                     ctx.config.protectedFilePatterns,
                 )
 
-                const completedSummary = appendMissingBlockSummaries(
-                    summaryWithTools,
-                    missingBlockIds,
-                    searchContext.summaryByBlockId,
-                    injected.consumedBlockIds,
-                )
+                const completedSummary = ctx.config.compress.allowPriorSummaryDrop
+                    ? discardMissingBlockSummaries(
+                          summaryWithTools,
+                          missingBlockIds,
+                          injected.consumedBlockIds,
+                      )
+                    : appendMissingBlockSummaries(
+                          summaryWithTools,
+                          missingBlockIds,
+                          searchContext.summaryByBlockId,
+                          injected.consumedBlockIds,
+                      )
 
                 preparedPlans.push({
                     entry: plan.entry,

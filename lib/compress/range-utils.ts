@@ -264,6 +264,29 @@ export function appendMissingBlockSummaries(
     }
 }
 
+export function discardMissingBlockSummaries(
+    summary: string,
+    missingBlockIds: number[],
+    consumedBlockIds: number[],
+): InjectedSummaryResult {
+    const consumedSeen = new Set<number>(consumedBlockIds)
+    const consumed = [...consumedBlockIds]
+
+    for (const blockId of missingBlockIds) {
+        if (consumedSeen.has(blockId)) {
+            continue
+        }
+
+        consumedSeen.add(blockId)
+        consumed.push(blockId)
+    }
+
+    return {
+        expandedSummary: summary,
+        consumedBlockIds: consumed,
+    }
+}
+
 function restoreSummary(summary: string): string {
     const headerMatch = summary.match(/^\s*\[Compressed conversation(?: section)?(?: b\d+)?\]/i)
     if (!headerMatch) {

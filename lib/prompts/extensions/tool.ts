@@ -18,6 +18,14 @@ THE FORMAT OF COMPRESS
 }
 \`\`\``
 
+export const RANGE_PRIOR_SUMMARY_DROP_EXTENSION = `
+PRIOR SUMMARY DISCARD
+
+Previously compressed summaries inside a selected range are normally preserved through
+their \`(bN)\` placeholders. You may deliberately omit a required \`(bN)\` placeholder to
+discard that prior summary instead of nesting it. Only do this when the prior summary is
+genuinely obsolete and no longer needed for the active task.`
+
 export const MESSAGE_FORMAT_EXTENSION = `
 THE FORMAT OF COMPRESS
 
