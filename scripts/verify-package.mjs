@@ -1,6 +1,6 @@
 import { builtinModules, createRequire } from "node:module"
 import { existsSync, readFileSync, statSync } from "node:fs"
-import { execFileSync } from "node:child_process"
+import { execSync } from "node:child_process"
 import path from "node:path"
 import process from "node:process"
 import { fileURLToPath } from "node:url"
@@ -211,7 +211,7 @@ function validateRuntimeImportGraph() {
 }
 
 function validatePackedFiles() {
-    const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {
+    const output = execSync("npm pack --dry-run --json", {
         cwd: root,
         encoding: "utf8",
     })
