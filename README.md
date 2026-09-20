@@ -1,7 +1,7 @@
-# Dynamic Context Pruning Plugin
+# Dynamic Context Pruning Plugin (local fork)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/dansmolsky)
-[![npm version](https://img.shields.io/npm/v/@tarquinen/opencode-dcp.svg)](https://www.npmjs.com/package/@tarquinen/opencode-dcp)
+A detached, self-maintained fork of the OpenCode Dynamic Context Pruning plugin
+(`@local/opencode-dcp`).
 
 Automatically reduces token usage in OpenCode by managing conversation context.
 
@@ -9,24 +9,16 @@ Automatically reduces token usage in OpenCode by managing conversation context.
 
 ## Installation
 
-Install from the CLI:
+This fork is not published to npm and does not auto-update from any upstream registry.
 
 ```bash
-opencode plugin @tarquinen/opencode-dcp@latest --global
+npm install
+npm run build
 ```
 
-This installs the package and adds it to your global OpenCode config.
-
-## Project Status
-
-Development on DCP has slowed because most new context-management work has moved to [Sleev](https://sleev.ai) and the `sleev` CLI. Sleev is a local proxy for Claude Code, Codex, and OpenCode that builds on DCP's core ideas with newer context-management features and will work with any harness/client.
-
-DCP remains available for OpenCode plugin users, but new features are landing in Sleev first. If you are starting fresh, we recommend trying Sleev:
-
-```bash
-npm i -g sleev
-sleev
-```
+Then point OpenCode's `plugin` configuration at this local package (for example by
+installing the built directory into your OpenCode config, or referencing the checkout
+directly).
 
 ## How It Works
 
@@ -72,7 +64,7 @@ Each level overrides the previous, so project settings take priority over global
 
 ```jsonc
 {
-    "$schema": "https://raw.githubusercontent.com/Opencode-DCP/opencode-dynamic-context-pruning/master/dcp.schema.json",
+    "$schema": "https://local/opencode-dcp/dcp.schema.json",
     // Enable or disable the plugin
     "enabled": true,
     // Automatically update npm-installed DCP when a newer npm latest is available.
