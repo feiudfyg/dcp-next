@@ -107,13 +107,13 @@
                 },
                 "customPrompts": {
                     "type": "boolean",
-                    "default": false,
-                    "description": "Enable user-editable prompt overrides under dcp-prompts directories"
+                    "default": true,
+                    "description": "Enable user-editable prompt overrides under dcp-prompts directories. Enabled by default in this fork; the bundled defaults ship in the package 'prompts' directory."
                 }
             },
             "default": {
                 "allowSubAgents": false,
-                "customPrompts": false
+                "customPrompts": true
             }
         },
         "protectedFilePatterns": {

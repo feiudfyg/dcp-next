@@ -97,8 +97,8 @@ Each level overrides the previous, so project settings take priority over global
         // Allow DCP processing in subagent sessions
         "allowSubAgents": false,
         // Enable user-editable prompt overrides under dcp-prompts directories
-        // When false (default), prompt override files/directories are ignored
-        "customPrompts": false,
+        // Enabled by default in this fork
+        "customPrompts": true,
     },
     // Protect file operations from pruning via glob patterns
     // Patterns match tool parameters.filePath (e.g. read/write/edit)
@@ -192,9 +192,17 @@ DCP exposes six editable prompts:
 - `turn-nudge`
 - `iteration-nudge`
 
-This feature is disabled by default. Set `experimental.customPrompts` to `true` in your DCP config to activate it.
+This feature is enabled by default in this fork (`experimental.customPrompts: true`). The
+bundled defaults are plain-text files shipped in the [`prompts/`](prompts) directory of this
+package, so you can edit them directly in the checkout without relying on runtime-generated
+default files.
 
-When enabled, managed defaults are written to `~/.config/opencode/dcp-prompts/defaults/` as plain-text prompt files. A single `README.md` in that directory explains each prompt and how to create overrides.
+Overrides are read from `dcp-prompts/overrides/` directories (project, config dir and global)
+and take precedence over the bundled defaults. Copy the matching file from `prompts/`, edit it
+as plain text, and restart OpenCode.
+
+For reference, DCP still mirrors the managed defaults to
+`~/.config/opencode/dcp-prompts/defaults/` together with a `README.md` explaining each prompt.
 
 To customize behavior, add a file with the same name under an overrides directory and edit it as plain text.
 

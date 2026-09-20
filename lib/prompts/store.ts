@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "fs"
 import { join, dirname } from "path"
 import { homedir } from "os"
+import { fileURLToPath } from "url"
 import type { Logger } from "../logger"
 import { SYSTEM as SYSTEM_PROMPT } from "./system"
 import { COMPRESS_RANGE as COMPRESS_RANGE_PROMPT } from "./compress-range"
@@ -193,6 +194,53 @@ function resolvePromptPaths(workingDirectory: string): PromptPaths {
     }
 }
 
+const BUNDLED_PROMPTS_DIRNAME = "prompts"
+
+let cachedBundledPromptsDir: string | null | undefined
+
+function getBundledPromptsDir(): string | null {
+    if (cachedBundledPromptsDir !== undefined) {
+        return cachedBundledPromptsDir
+    }
+
+    cachedBundledPromptsDir = findBundledPromptsDir()
+    return cachedBundledPromptsDir
+}
+
+function findBundledPromptsDir(): string | null {
+    let current = dirname(fileURLToPath(import.meta.url))
+
+    for (let depth = 0; depth < 6; depth++) {
+        const candidate = join(current, BUNDLED_PROMPTS_DIRNAME)
+        if (existsSync(join(candidate, "system.md"))) {
+            return candidate
+        }
+
+        const parent = dirname(current)
+        if (parent === current) {
+            break
+        }
+        current = parent
+    }
+
+    return null
+}
+
+function readBundledEditablePrompt(definition: PromptDefinition): string | null {
+    const dir = getBundledPromptsDir()
+    if (!dir) {
+        return null
+    }
+
+    const raw = readFileIfExists(join(dir, definition.fileName))
+    if (raw === null) {
+        return null
+    }
+
+    const editable = toEditablePromptText(definition, raw)
+    return editable || null
+}
+
 function stripConditionalTag(content: string, tagName: string): string {
     const regex = new RegExp(`<${tagName}>[\\s\\S]*?<\/${tagName}>`, "gi")
     return content.replace(regex, "")
@@ -353,7 +401,9 @@ export class PromptStore {
 
         for (const definition of PROMPT_DEFINITIONS) {
             const bundledSource = BUNDLED_EDITABLE_PROMPTS[definition.runtimeField]
-            const bundledEditable = toEditablePromptText(definition, bundledSource)
+            const bundledEditable =
+                readBundledEditablePrompt(definition) ??
+                toEditablePromptText(definition, bundledSource)
             const bundledRuntime = wrapRuntimePromptContent(definition, bundledEditable)
             const fallbackValue = bundledRuntime || bundledSource.trim()
             let effectiveValue = fallbackValue
@@ -427,10 +477,9 @@ export class PromptStore {
         }
 
         for (const definition of PROMPT_DEFINITIONS) {
-            const bundledEditable = toEditablePromptText(
-                definition,
-                BUNDLED_EDITABLE_PROMPTS[definition.runtimeField],
-            )
+            const bundledEditable =
+                readBundledEditablePrompt(definition) ??
+                toEditablePromptText(definition, BUNDLED_EDITABLE_PROMPTS[definition.runtimeField])
             const managedContent = buildDefaultPromptFileContent(
                 bundledEditable || BUNDLED_EDITABLE_PROMPTS[definition.runtimeField],
             )

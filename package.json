@@ -70,6 +70,7 @@
     "files": [
         "dist/",
         "lib/",
+        "prompts/",
         "tui.tsx",
         "dcp.schema.json",
         "README.md",

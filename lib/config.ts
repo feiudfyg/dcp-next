@@ -157,9 +157,7 @@ function getConfigKeyPaths(obj: Record<string, any>, prefix = ""): string[] {
 
 export function getInvalidConfigKeys(userConfig: Record<string, any>): string[] {
     const userKeys = getConfigKeyPaths(userConfig)
-    return userKeys.filter(
-        (key) => !VALID_CONFIG_KEYS.has(key) && !DEPRECATED_CONFIG_KEYS.has(key),
-    )
+    return userKeys.filter((key) => !VALID_CONFIG_KEYS.has(key) && !DEPRECATED_CONFIG_KEYS.has(key))
 }
 
 interface ValidationError {
@@ -671,7 +669,7 @@ const defaultConfig: PluginConfig = {
     },
     experimental: {
         allowSubAgents: false,
-        customPrompts: false,
+        customPrompts: true,
     },
     protectedFilePatterns: [],
     compress: {
