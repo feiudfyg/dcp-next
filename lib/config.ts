@@ -813,13 +813,21 @@ function getConfigPaths(ctx?: PluginInput): {
     return { global, configDir, project }
 }
 
+function getBundledSchemaUrl(): string {
+    try {
+        return new URL("../dcp.schema.json", import.meta.url).href
+    } catch {
+        return "https://local/opencode-dcp/dcp.schema.json"
+    }
+}
+
 function createDefaultConfig(): void {
     if (!existsSync(GLOBAL_CONFIG_DIR)) {
         mkdirSync(GLOBAL_CONFIG_DIR, { recursive: true })
     }
 
     const configContent = `{
-  "$schema": "https://local/opencode-dcp/dcp.schema.json"
+  "$schema": "${getBundledSchemaUrl()}"
 }
 `
     writeFileSync(GLOBAL_CONFIG_PATH_JSONC, configContent, "utf-8")
