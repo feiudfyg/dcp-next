@@ -16,11 +16,6 @@
             "default": true,
             "description": "Enable or disable the DCP plugin"
         },
-        "autoUpdate": {
-            "type": "boolean",
-            "default": true,
-            "description": "Automatically update npm-installed DCP when a newer npm latest version is available. Version-locked plugin specs are not updated."
-        },
         "debug": {
             "type": "boolean",
             "default": false,

@@ -57,7 +57,6 @@ export interface ExperimentalConfig {
 
 export interface PluginConfig {
     enabled: boolean
-    autoUpdate: boolean
     debug: boolean
     pruneNotification: "off" | "minimal" | "detailed"
     pruneNotificationType: "chat" | "toast"
@@ -93,9 +92,7 @@ const COMPRESS_DEFAULT_PROTECTED_TOOLS = ["task", "skill", "todowrite", "todorea
 export const VALID_CONFIG_KEYS = new Set([
     "$schema",
     "enabled",
-    "autoUpdate",
     "debug",
-    "showUpdateToasts",
     "pruneNotification",
     "pruneNotificationType",
     "turnProtection",
@@ -136,6 +133,10 @@ export const VALID_CONFIG_KEYS = new Set([
     "strategies.purgeErrors.protectedTools",
 ])
 
+// Keys accepted for backward compatibility but no longer used. npm auto-update was
+// removed in this fork, so these are silently ignored instead of warning.
+const DEPRECATED_CONFIG_KEYS = new Set(["autoUpdate", "showUpdateToasts"])
+
 function getConfigKeyPaths(obj: Record<string, any>, prefix = ""): string[] {
     const keys: string[] = []
     for (const key of Object.keys(obj)) {
@@ -156,7 +157,9 @@ function getConfigKeyPaths(obj: Record<string, any>, prefix = ""): string[] {
 
 export function getInvalidConfigKeys(userConfig: Record<string, any>): string[] {
     const userKeys = getConfigKeyPaths(userConfig)
-    return userKeys.filter((key) => !VALID_CONFIG_KEYS.has(key))
+    return userKeys.filter(
+        (key) => !VALID_CONFIG_KEYS.has(key) && !DEPRECATED_CONFIG_KEYS.has(key),
+    )
 }
 
 interface ValidationError {
@@ -170,10 +173,6 @@ export function validateConfigTypes(config: Record<string, any>): ValidationErro
 
     if (config.enabled !== undefined && typeof config.enabled !== "boolean") {
         errors.push({ key: "enabled", expected: "boolean", actual: typeof config.enabled })
-    }
-
-    if (config.autoUpdate !== undefined && typeof config.autoUpdate !== "boolean") {
-        errors.push({ key: "autoUpdate", expected: "boolean", actual: typeof config.autoUpdate })
     }
 
     if (config.debug !== undefined && typeof config.debug !== "boolean") {
@@ -655,7 +654,6 @@ function showConfigWarnings(
 
 const defaultConfig: PluginConfig = {
     enabled: true,
-    autoUpdate: true,
     debug: false,
     pruneNotification: "detailed",
     pruneNotificationType: "chat",
@@ -932,7 +930,6 @@ function deepCloneConfig(config: PluginConfig): PluginConfig {
 function mergeLayer(config: PluginConfig, data: Record<string, any>): PluginConfig {
     return {
         enabled: data.enabled ?? config.enabled,
-        autoUpdate: data.autoUpdate ?? config.autoUpdate,
         debug: data.debug ?? config.debug,
         pruneNotification: data.pruneNotification ?? config.pruneNotification,
         pruneNotificationType: data.pruneNotificationType ?? config.pruneNotificationType,
