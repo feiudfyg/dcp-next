@@ -1,43 +1,33 @@
-export const COMPRESS_MESSAGE = `Collapse selected individual messages in the conversation into detailed summaries.
+export const COMPRESS_MESSAGE = `We collapse selected individual messages in the conversation into detailed summaries.
 
 THE SUMMARY
-Your summary must be EXHAUSTIVE. Capture file paths, function signatures, decisions made, constraints discovered, key findings, tool outcomes, and user intent details that matter... EVERYTHING that preserves the value of the selected message after the raw message is removed.
+Our summary must be EXHAUSTIVE. It captures file paths, function signatures, decisions, constraints, key findings, tool outcomes, and user intent needed to keep the message's value after the raw message is removed.
 
-USER INTENT FIDELITY
-When a selected message contains user intent, preserve that intent with extra care. Do not change scope, constraints, priorities, acceptance criteria, or requested outcomes.
-Directly quote short user instructions when that best preserves exact meaning.
+USER INTENT
+When a selected message contains user intent, we preserve it exactly. We do not change scope, constraints, priorities, acceptance criteria, or outcomes. We quote short user instructions directly when that preserves the exact meaning.
 
-Yet be LEAN. Strip away the noise: failed attempts that led nowhere, verbose tool output, and repetition. What remains should be pure signal - golden nuggets of detail that preserve full understanding with zero ambiguity.
-If a message contains no significant technical decisions, code changes, or user requirements, produce a minimal one-line summary rather than a detailed one.
+We keep the summary LEAN. We drop noise: dead-end attempts, verbose tool output, and repetition. We keep pure signal. When a message has no significant technical decision, code change, or user requirement, we write a one-line summary.
 
 MESSAGE IDS
-You specify individual raw messages by ID using the injected IDs visible in the conversation:
+We specify individual raw messages by ID using the injected IDs visible in the conversation:
 
-- \`mNNNN\` IDs identify raw messages
+- \`mNNNN\` IDs identify raw messages.
 
-Each message has an ID inside XML metadata tags like \`<dcp-message-id priority="high">m0007</dcp-message-id>\`.
-The same ID tag appears in every tool output of the message it belongs to — each unique ID identifies one complete message.
-Treat these tags as message metadata only, not as content to summarize. Use only the inner \`mNNNN\` value as the \`messageId\`.
-The \`priority\` attribute indicates relative context cost. You MUST compress high-priority messages when their full text is no longer necessary for the active task.
-If prior compress-tool results are present, always compress and summarize them minimally only as part of a broader compression pass. Do not invoke the compress tool solely to re-compress an earlier compression result.
+Each message has an ID inside XML metadata tags like \`<dcp-message-id priority="high">m0007</dcp-message-id>\`. The same ID appears in every tool output of that message. We treat these tags as metadata only and use the inner \`mNNNN\` value as the \`messageId\`.
+The \`priority\` attribute shows relative context cost. We must compress high-priority messages when their full text is no longer necessary.
+When prior compress-tool results are present, we summarize them minimally as part of a broader pass. We do not call compress only to re-compress an earlier result.
 Messages marked as \`<dcp-message-id>BLOCKED</dcp-message-id>\` cannot be compressed.
 
 Rules:
 
-- Pick each \`messageId\` directly from injected IDs visible in context.
+- We pick each \`messageId\` directly from injected IDs in context.
 - Only use raw message IDs of the form \`mNNNN\`.
-- Ignore XML attributes such as \`priority\` when copying the ID; use only the inner \`mNNNN\` value.
-- Do not invent IDs. Use only IDs that are present in context.
+- We ignore XML attributes such as \`priority\` and use only the inner \`mNNNN\` value.
+- We do not invent IDs. We use only IDs present in context.
 
 BATCHING
-Select MANY messages in a single tool call when they are safe to compress.
-Each entry should summarize exactly one message, and the tool can receive as many entries as needed in one batch.
+We select MANY messages in one tool call when they are safe to compress. Each entry summarizes exactly one message, and the tool accepts as many entries as needed in one batch.
 
 GENERAL CLEANUP
-Use the topic "general cleanup" for broad cleanup passes.
-During general cleanup, compress all medium and high-priority messages that are not relevant to the active task.
-Optimize for reducing context footprint, not for grouping messages by topic.
-Do not compress away still-active instructions, unresolved questions, or constraints that are likely to matter soon.
-Prioritize the earliest messages in the context as they will be the least relevant to the active task.
-General cleanup should be done periodically between other normal compression tool passes, not as the primary form of compression.
+We use the topic "general cleanup" for broad passes. During general cleanup, we compress all medium and high-priority messages not relevant to the active task. We optimize for a smaller context rather than grouping by topic. We keep still-active instructions, unresolved questions, and constraints likely to matter soon. We prioritize the earliest messages. We run general cleanup periodically between normal passes.
 `

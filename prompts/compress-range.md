@@ -1,59 +1,56 @@
-Collapse a range in the conversation into a detailed summary.
+We collapse a range in the conversation into one detailed summary.
 
 THE SUMMARY
-Your summary must be EXHAUSTIVE. Capture file paths, function signatures, decisions made, constraints discovered, key findings... EVERYTHING that maintains context integrity. This is not a brief note - it is an authoritative record so faithful that the original conversation adds no value.
+Our summary must be EXHAUSTIVE. It captures file paths, function signatures, decisions, constraints, key findings, and everything needed to keep context integrity. We write an authoritative record, faithful enough that the original conversation adds no value.
 
-USER INTENT FIDELITY
-When the compressed range includes user messages, preserve the user's intent with extra care. Do not change scope, constraints, priorities, acceptance criteria, or requested outcomes.
-Directly quote user messages when they are short enough to include safely. Direct quotes are preferred when they best preserve exact meaning.
+USER INTENT
+When the range includes user messages, we preserve the user's intent exactly. We do not change scope, constraints, priorities, acceptance criteria, or outcomes. We quote short user messages directly when that preserves the exact meaning.
 
-Yet be LEAN. Strip away the noise: failed attempts that led nowhere, verbose tool outputs, back-and-forth exploration. What remains should be pure signal - golden nuggets of detail that preserve full understanding with zero ambiguity.
+We keep the summary LEAN. We drop noise: dead-end attempts, verbose tool output, and back-and-forth exploration. We keep pure signal: details that preserve full understanding with no ambiguity.
 
 COMPRESSED BLOCK PLACEHOLDERS
-When the selected range includes previously compressed blocks, use this exact placeholder format when referencing one:
+When the range includes previously compressed blocks, we reference each with its exact placeholder:
 
 - `(bN)`
 
-Compressed block sections in context are clearly marked with a header:
+Compressed block sections appear in context with the header:
 
 - `[Compressed conversation section]`
 
-Compressed block IDs always use the `bN` form (never `mNNNN`) and are represented in the same XML metadata tag format.
+Compressed block IDs use the `bN` form (never `mNNNN`) and the same XML metadata tag format.
 
 Rules:
 
-- Include every required block placeholder exactly once.
-- Do not invent placeholders for blocks outside the selected range.
-- Treat `(bN)` placeholders as RESERVED TOKENS. Do not emit `(bN)` text anywhere except intentional placeholders.
-- If you need to mention a block in prose, use plain text like `compressed bN` (not as a placeholder).
-- Preflight check before finalizing: the set of `(bN)` placeholders in your summary must exactly match the required set, with no duplicates.
+- We include every required block placeholder exactly once.
+- We do not invent placeholders for blocks outside the range.
+- We treat `(bN)` placeholders as RESERVED TOKENS. We emit `(bN)` text only as intentional placeholders.
+- When we mention a block in prose, we write plain text like `compressed bN`.
+- Before finalizing, we check that the set of `(bN)` placeholders in our summary exactly matches the required set, with no duplicates.
 
-These placeholders are semantic references. They will be replaced with the full stored compressed block content when the tool processes your output.
+Placeholders are semantic references. The tool replaces them with the full stored compressed block content.
 
-FLOW PRESERVATION WITH PLACEHOLDERS
-When you use compressed block placeholders, write the surrounding summary text so it still reads correctly AFTER placeholder expansion.
+FLOW PRESERVATION
+We write the summary so it still reads correctly after placeholder expansion.
 
-- Treat each placeholder as a stand-in for a full conversation segment, not as a short label.
-- Ensure transitions before and after each placeholder preserve chronology and causality.
-- Do not write text that depends on the placeholder staying literal (for example, "as noted in `(b2)`").
-- Your final meaning must be coherent once each placeholder is replaced with its full compressed block content.
+- We treat each placeholder as a stand-in for a full conversation segment.
+- We keep transitions before and after each placeholder chronological and causal.
+- We do not write text that depends on the placeholder staying literal.
+- Our meaning stays coherent once each placeholder is replaced.
 
 BOUNDARY IDS
-You specify boundaries by ID using the injected IDs visible in the conversation:
+We specify boundaries by ID using the injected IDs visible in the conversation:
 
-- `mNNNN` IDs identify raw messages
-- `bN` IDs identify previously compressed blocks
+- `mNNNN` IDs identify raw messages.
+- `bN` IDs identify previously compressed blocks.
 
-Each message has an ID inside XML metadata tags like `<dcp-message-id>...</dcp-message-id>`.
-The same ID tag appears in every tool output of the message it belongs to — each unique ID identifies one complete message.
-Treat these tags as boundary metadata only, not as tool result content.
+Each message has an ID inside XML metadata tags like `<dcp-message-id>...</dcp-message-id>`. The same ID appears in every tool output of that message. We treat these tags as boundary metadata only.
 
 Rules:
 
-- Pick `startId` and `endId` directly from injected IDs in context.
+- We pick `startId` and `endId` directly from injected IDs in context.
 - IDs must exist in the current visible context.
 - `startId` must appear before `endId`.
-- Do not invent IDs. Use only IDs that are present in context.
+- We do not invent IDs. We use only IDs present in context.
 
 BATCHING
-When multiple independent ranges are ready and their boundaries do not overlap, include all of them as separate entries in the `content` array of a single tool call. Each entry should have its own `startId`, `endId`, and `summary`.
+When independent ranges are ready and their boundaries do not overlap, we include all of them as separate entries in the `content` array of a single tool call. Each entry has its own `startId`, `endId`, and `summary`.
