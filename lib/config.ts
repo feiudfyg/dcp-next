@@ -12,6 +12,12 @@ export interface Deduplication {
     protectedTools: string[]
 }
 
+export interface CompressTriggers {
+    contextLimit: boolean
+    turn: boolean
+    iteration: boolean
+}
+
 export interface CompressConfig {
     mode: CompressMode
     permission: Permission
@@ -24,6 +30,7 @@ export interface CompressConfig {
     nudgeFrequency: number
     iterationNudgeThreshold: number
     nudgeForce: "strong" | "soft"
+    triggers: CompressTriggers
     protectedTools: string[]
     protectTags: boolean
     protectUserMessages: boolean
@@ -120,6 +127,10 @@ export const VALID_CONFIG_KEYS = new Set([
     "compress.nudgeFrequency",
     "compress.iterationNudgeThreshold",
     "compress.nudgeForce",
+    "compress.triggers",
+    "compress.triggers.contextLimit",
+    "compress.triggers.turn",
+    "compress.triggers.iteration",
     "compress.protectedTools",
     "compress.protectTags",
     "compress.protectUserMessages",
@@ -413,6 +424,28 @@ export function validateConfigTypes(config: Record<string, any>): ValidationErro
                 })
             }
 
+            const triggers = compress.triggers
+            if (triggers !== undefined) {
+                if (typeof triggers !== "object" || triggers === null || Array.isArray(triggers)) {
+                    errors.push({
+                        key: "compress.triggers",
+                        expected: "object",
+                        actual: typeof triggers,
+                    })
+                } else {
+                    for (const triggerKey of ["contextLimit", "turn", "iteration"] as const) {
+                        const value = triggers[triggerKey]
+                        if (value !== undefined && typeof value !== "boolean") {
+                            errors.push({
+                                key: `compress.triggers.${triggerKey}`,
+                                expected: "boolean",
+                                actual: typeof value,
+                            })
+                        }
+                    }
+                }
+            }
+
             if (compress.protectedTools !== undefined && !Array.isArray(compress.protectedTools)) {
                 errors.push({
                     key: "compress.protectedTools",
@@ -682,6 +715,11 @@ const defaultConfig: PluginConfig = {
         nudgeFrequency: 5,
         iterationNudgeThreshold: 15,
         nudgeForce: "soft",
+        triggers: {
+            contextLimit: true,
+            turn: true,
+            iteration: true,
+        },
         protectedTools: [...COMPRESS_DEFAULT_PROTECTED_TOOLS],
         protectTags: false,
         protectUserMessages: false,
@@ -848,6 +886,11 @@ function mergeCompress(
         nudgeFrequency: override.nudgeFrequency ?? base.nudgeFrequency,
         iterationNudgeThreshold: override.iterationNudgeThreshold ?? base.iterationNudgeThreshold,
         nudgeForce: override.nudgeForce ?? base.nudgeForce,
+        triggers: {
+            contextLimit: override.triggers?.contextLimit ?? base.triggers.contextLimit,
+            turn: override.triggers?.turn ?? base.triggers.turn,
+            iteration: override.triggers?.iteration ?? base.triggers.iteration,
+        },
         protectedTools: [...new Set([...base.protectedTools, ...(override.protectedTools ?? [])])],
         protectTags: override.protectTags ?? base.protectTags,
         protectUserMessages: override.protectUserMessages ?? base.protectUserMessages,
@@ -910,6 +953,7 @@ function deepCloneConfig(config: PluginConfig): PluginConfig {
             ...config.compress,
             modelMaxLimits: { ...config.compress.modelMaxLimits },
             modelMinLimits: { ...config.compress.modelMinLimits },
+            triggers: { ...config.compress.triggers },
             protectedTools: [...config.compress.protectedTools],
         },
         strategies: {

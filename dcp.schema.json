@@ -225,6 +225,33 @@
                     "default": "soft",
                     "description": "Controls how likely compression is after user messages. 'strong' is more likely, 'soft' is less likely."
                 },
+                "triggers": {
+                    "type": "object",
+                    "description": "Fine-grained control over which compression nudges may fire",
+                    "additionalProperties": false,
+                    "properties": {
+                        "contextLimit": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Fire the context-limit nudge when context usage is above maxContextLimit"
+                        },
+                        "turn": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Fire the turn nudge at user turn boundaries"
+                        },
+                        "iteration": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Fire the iteration nudge after iterationNudgeThreshold messages without user input"
+                        }
+                    },
+                    "default": {
+                        "contextLimit": true,
+                        "turn": true,
+                        "iteration": true
+                    }
+                },
                 "protectedTools": {
                     "type": "array",
                     "items": {

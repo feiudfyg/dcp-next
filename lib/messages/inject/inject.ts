@@ -68,6 +68,21 @@ export const injectCompressNudges = (
         messages,
     )
 
+    const triggers = config.compress.triggers
+
+    if (!triggers.contextLimit && state.nudges.contextLimitAnchors.size > 0) {
+        state.nudges.contextLimitAnchors.clear()
+        anchorsChanged = true
+    }
+    if (!triggers.turn && state.nudges.turnNudgeAnchors.size > 0) {
+        state.nudges.turnNudgeAnchors.clear()
+        anchorsChanged = true
+    }
+    if (!triggers.iteration && state.nudges.iterationNudgeAnchors.size > 0) {
+        state.nudges.iterationNudgeAnchors.clear()
+        anchorsChanged = true
+    }
+
     if (!overMinLimit) {
         const hadTurnAnchors = state.nudges.turnNudgeAnchors.size > 0
         const hadIterationAnchors = state.nudges.iterationNudgeAnchors.size > 0
@@ -80,7 +95,7 @@ export const injectCompressNudges = (
     }
 
     if (overMaxLimit) {
-        if (lastMessage) {
+        if (triggers.contextLimit && lastMessage) {
             const interval = getNudgeFrequency(config)
             const added = addAnchor(
                 state.nudges.contextLimitAnchors,
@@ -96,7 +111,7 @@ export const injectCompressNudges = (
     } else if (overMinLimit) {
         const isLastMessageUser = lastMessage?.message.info.role === "user"
 
-        if (isLastMessageUser && lastAssistantMessage) {
+        if (triggers.turn && isLastMessageUser && lastAssistantMessage) {
             const previousSize = state.nudges.turnNudgeAnchors.size
             state.nudges.turnNudgeAnchors.add(lastMessage.message.info.id)
             state.nudges.turnNudgeAnchors.add(lastAssistantMessage.info.id)
@@ -105,7 +120,7 @@ export const injectCompressNudges = (
             }
         }
 
-        const lastUserMessage = getLastUserMessage(messages)
+        const lastUserMessage = triggers.iteration ? getLastUserMessage(messages) : undefined
         if (lastUserMessage && lastMessage) {
             const lastUserMessageIndex = messages.findIndex(
                 (message) => message.info.id === lastUserMessage.info.id,

@@ -144,6 +144,15 @@ Each level overrides the previous, so project settings take priority over global
         // Controls how likely compression is after user messages
         // ("strong" = more likely, "soft" = less likely)
         "nudgeForce": "soft",
+        // Fine-grained control over which compression nudges may fire
+        "triggers": {
+            // Fire the context-limit nudge when above maxContextLimit
+            "contextLimit": true,
+            // Fire the turn nudge at user turn boundaries
+            "turn": true,
+            // Fire the iteration nudge after many messages without user input
+            "iteration": true,
+        },
         // Tool names whose completed outputs are appended to the compression
         "protectedTools": [],
         // Preserve text wrapped in <protect>...</protect> when compressed
