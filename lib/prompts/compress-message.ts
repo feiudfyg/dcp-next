@@ -6,7 +6,7 @@ Our summary must be EXHAUSTIVE. It captures file paths, function signatures, dec
 USER INTENT
 When a selected message contains user intent, we preserve it exactly. We do not change scope, constraints, priorities, acceptance criteria, or outcomes. We quote short user instructions directly when that preserves the exact meaning.
 
-We keep the summary LEAN. We drop noise: dead-end attempts, verbose tool output, and repetition. We keep pure signal. When a message has no significant technical decision, code change, or user requirement, we write a one-line summary.
+We keep the summary LEAN and much smaller than the raw message. We drop noise: dead-end attempts, verbose tool output, and repetition. We keep pure signal: the decisions, code changes, and requirements that preserve the message's value. When a message has no significant technical decision, code change, or user requirement, we write a one-line summary.
 
 MESSAGE IDS
 We specify individual raw messages by ID using the injected IDs visible in the conversation:

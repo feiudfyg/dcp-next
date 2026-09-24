@@ -302,13 +302,19 @@ function toEditablePromptText(definition: PromptDefinition, rawContent: string):
     return normalized.trim()
 }
 
+const REMINDER_PROMPT_KEYS = new Set<PromptKey>([
+    "context-limit-nudge",
+    "turn-nudge",
+    "iteration-nudge",
+])
+
 function wrapRuntimePromptContent(definition: PromptDefinition, editableText: string): string {
     const trimmed = editableText.trim()
     if (!trimmed) {
         return ""
     }
 
-    if (definition.key === "compress-range" || definition.key === "compress-message") {
+    if (!REMINDER_PROMPT_KEYS.has(definition.key)) {
         return trimmed
     }
 

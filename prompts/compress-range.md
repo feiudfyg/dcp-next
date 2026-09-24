@@ -6,7 +6,7 @@ Our summary must be EXHAUSTIVE. It captures file paths, function signatures, dec
 USER INTENT
 When the range includes user messages, we preserve the user's intent exactly. We do not change scope, constraints, priorities, acceptance criteria, or outcomes. We quote short user messages directly when that preserves the exact meaning.
 
-We keep the summary LEAN. We drop noise: dead-end attempts, verbose tool output, and back-and-forth exploration. We keep pure signal: details that preserve full understanding with no ambiguity.
+We keep the summary LEAN and much smaller than the content it replaces. We drop noise: dead-end attempts, verbose tool output, and back-and-forth exploration. We keep pure signal: the file paths, decisions, constraints, and findings that preserve full understanding with no ambiguity. We omit narration and anything the reader can re-derive.
 
 COMPRESSED BLOCK PLACEHOLDERS
 When the range includes previously compressed blocks, we reference each with its exact placeholder:

@@ -65,7 +65,7 @@ test("system prompt overrides handle reminder tags safely", async (t) => {
         }
     })
 
-    await t.test("fully wrapped overrides are normalized to a single runtime wrapper", () => {
+    await t.test("fully wrapped system overrides are unwrapped for runtime", () => {
         const fixture = createPromptStoreFixture(
             `<dcp-system-reminder>\nWrapped override body\n</dcp-system-reminder>\n`,
         )
@@ -75,8 +75,8 @@ test("system prompt overrides handle reminder tags safely", async (t) => {
             const openingTags = runtimeSystemPrompt.match(/<dcp-system-reminder\b[^>]*>/g) ?? []
             const closingTags = runtimeSystemPrompt.match(/<\/dcp-system-reminder>/g) ?? []
 
-            assert.equal(openingTags.length, 1)
-            assert.equal(closingTags.length, 1)
+            assert.equal(openingTags.length, 0)
+            assert.equal(closingTags.length, 0)
             assert.match(runtimeSystemPrompt, /Wrapped override body/)
         } finally {
             fixture.cleanup()
