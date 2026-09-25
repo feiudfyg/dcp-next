@@ -18,13 +18,31 @@ THE FORMAT OF COMPRESS
 }
 \`\`\``
 
-export const RANGE_PRIOR_SUMMARY_DROP_EXTENSION = `
-PRIOR SUMMARY DISCARD
+export const RANGE_PRIOR_BLOCKS_EXTENSION = `
+PRIOR COMPRESSED BLOCKS
 
-Previously compressed summaries inside a selected range are normally preserved through
-their \`(bN)\` placeholders. You may deliberately omit a required \`(bN)\` placeholder to
-discard that prior summary instead of nesting it. Only do this when the prior summary is
-genuinely obsolete and no longer needed for the active task.`
+Previously compressed blocks are normal compressible content. They are not off-limits.
+We may use \`bN\` as range boundaries, include prior blocks in a new range, and
+re-compress them. We do not limit compression to the newest uncompressed messages.
+Prior block summaries are visible in context as \`[Compressed conversation section]\`.`
+
+export const RANGE_PRIOR_SUMMARY_DROP_EXTENSION = `
+REPLACING PRIOR SUMMARIES
+
+For each required prior block in the range, we choose one behavior:
+
+- Keep it verbatim: include its \`(bN)\` placeholder.
+- Replace it: omit its \`(bN)\` placeholder. The old summary is removed, so our new
+  summary MUST cover that block's essential content in condensed form.
+
+This is how we re-compress earlier summaries to a smaller size.`
+
+export const RANGE_PRIOR_SUMMARY_PRESERVE_EXTENSION = `
+PRESERVING PRIOR SUMMARIES
+
+Every required prior block must keep its \`(bN)\` placeholder exactly once. Prior
+summaries that are omitted are appended automatically, so omitting one does not
+reduce context.`
 
 export const MESSAGE_FORMAT_EXTENSION = `
 THE FORMAT OF COMPRESS

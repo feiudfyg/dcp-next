@@ -21,11 +21,11 @@ Compressed block IDs use the \`bN\` form (never \`mNNNN\`) and the same XML meta
 
 Rules:
 
-- We include every required block placeholder exactly once.
+- We reference each prior block we keep with its exact \`(bN)\` placeholder.
 - We do not invent placeholders for blocks outside the range.
 - We treat \`(bN)\` placeholders as RESERVED TOKENS. We emit \`(bN)\` text only as intentional placeholders.
 - When we mention a block in prose, we write plain text like \`compressed bN\`.
-- Before finalizing, we check that the set of \`(bN)\` placeholders in our summary exactly matches the required set, with no duplicates.
+- We keep every \`(bN)\` placeholder unique and inside the selected range.
 
 Placeholders are semantic references. The tool replaces them with the full stored compressed block content.
 

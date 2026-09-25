@@ -254,8 +254,8 @@
                 },
                 "allowPriorSummaryDrop": {
                     "type": "boolean",
-                    "default": false,
-                    "description": "Allow the model to discard previously compressed summaries inside a range by omitting their (bN) placeholder instead of nesting them"
+                    "default": true,
+                    "description": "Let the model re-compress prior summaries: including a (bN) placeholder keeps it verbatim, omitting it replaces that summary with the new condensed summary. When false, every required prior summary is preserved."
                 },
                 "protectedTools": {
                     "type": "array",

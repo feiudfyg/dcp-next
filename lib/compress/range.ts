@@ -3,7 +3,9 @@ import type { ToolContext } from "./types"
 import { countTokens } from "../token-utils"
 import {
     RANGE_FORMAT_EXTENSION,
+    RANGE_PRIOR_BLOCKS_EXTENSION,
     RANGE_PRIOR_SUMMARY_DROP_EXTENSION,
+    RANGE_PRIOR_SUMMARY_PRESERVE_EXTENSION,
 } from "../prompts/extensions/tool"
 import { finalizeSession, prepareSession, type NotificationEntry } from "./pipeline"
 import {
@@ -61,13 +63,14 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
     ctx.prompts.reload()
     const runtimePrompts = ctx.prompts.getRuntimePrompts()
 
-    const priorSummaryDropExtension = ctx.config.compress.allowPriorSummaryDrop
-        ? RANGE_PRIOR_SUMMARY_DROP_EXTENSION
-        : ""
+    const priorBlockExtension =
+        RANGE_PRIOR_BLOCKS_EXTENSION +
+        (ctx.config.compress.allowPriorSummaryDrop
+            ? RANGE_PRIOR_SUMMARY_DROP_EXTENSION
+            : RANGE_PRIOR_SUMMARY_PRESERVE_EXTENSION)
 
     return tool({
-        description:
-            runtimePrompts.compressRange + RANGE_FORMAT_EXTENSION + priorSummaryDropExtension,
+        description: runtimePrompts.compressRange + RANGE_FORMAT_EXTENSION + priorBlockExtension,
         args: buildSchema(),
         async execute(args, toolCtx) {
             const input = args as CompressRangeToolArgs

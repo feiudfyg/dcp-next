@@ -1,17 +1,24 @@
 import type { SessionState } from "../../state"
 
-export function buildCompressedBlockGuidance(state: SessionState): string {
+export function buildCompressedBlockGuidance(
+    state: SessionState,
+    allowPriorSummaryDrop = false,
+): string {
     const refs = Array.from(state.prune.messages.activeBlockIds)
         .filter((id) => Number.isInteger(id) && id > 0)
         .sort((a, b) => a - b)
         .map((id) => `b${id}`)
     const blockCount = refs.length
     const blockList = blockCount > 0 ? refs.join(", ") : "none"
+    const action = allowPriorSummaryDrop
+        ? "- Prior blocks are re-compressible. Include a block's `(bN)` placeholder to keep it verbatim, or omit it to replace that summary with our condensed new summary."
+        : "- Prior blocks are re-compressible. We may include them in a new range; include each required `(bN)` placeholder exactly once."
 
     return [
         "Compressed block context:",
         `- Active compressed blocks in this session: ${blockCount} (${blockList})`,
-        "- If your selected compression range includes any listed block, include each required placeholder exactly once in the summary using `(bN)`.",
+        "- We may use `bN` boundaries and include prior blocks in a new range, not only the newest uncompressed messages.",
+        action,
     ].join("\n")
 }
 

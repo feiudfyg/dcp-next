@@ -733,7 +733,7 @@ const defaultConfig: PluginConfig = {
             turn: true,
             iteration: true,
         },
-        allowPriorSummaryDrop: false,
+        allowPriorSummaryDrop: true,
         protectedTools: [...COMPRESS_DEFAULT_PROTECTED_TOOLS],
         protectTags: false,
         protectUserMessages: false,
