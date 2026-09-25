@@ -33,7 +33,7 @@ DCP supports two compression modes:
 - `range` mode compresses contiguous spans of conversation into one or more summaries.
 - `message` mode (experimental) compresses individual raw messages independently, letting the model manage context much more surgically.
 
-In `range` mode, when a new compression overlaps an earlier one, the earlier summary is nested inside the new one so information is preserved through layers of compression rather than diluted away. Prior compressed blocks are normal compressible content: with `compress.allowPriorSummaryDrop` (enabled by default), the model can re-compress them by including a `(bN)` placeholder to keep a summary verbatim or omitting it to replace that summary with a new condensed one. In both modes, protected tool outputs (such as subagents and skills) and protected file patterns are kept in compression summaries, ensuring that the most important information is never lost. You can also enable `protectUserMessages` to preserve your messages verbatim during compression, though note that large prompts (e.g. copy-pasting log files in the prompt) will then never be compressed away.
+In `range` mode, when a new compression overlaps an earlier one, the earlier summary is nested inside the new one so information is preserved through layers of compression rather than diluted away. Prior compressed blocks are normal compressible content: with `compress.allowPriorSummaryDrop` (enabled by default), the model can re-compress them by listing their block IDs in `replaceBlockIds`; listed blocks are removed and must be covered by the new summary, while unlisted omitted blocks are preserved automatically. In both modes, protected tool outputs (such as subagents and skills) and protected file patterns are kept in compression summaries, ensuring that the most important information is never lost. You can also enable `protectUserMessages` to preserve your messages verbatim during compression, though note that large prompts (e.g. copy-pasting log files in the prompt) will then never be compressed away.
 
 ### Deduplication
 
@@ -153,8 +153,8 @@ Each level overrides the previous, so project settings take priority over global
             // Fire the iteration nudge after many messages without user input
             "iteration": true,
         },
-        // Let the model re-compress prior summaries: keep a (bN) placeholder to
-        // preserve it verbatim, omit it to replace it with the new summary
+        // Let the model re-compress prior summaries by listing them in
+        // replaceBlockIds; unlisted omitted blocks are still preserved
         "allowPriorSummaryDrop": true,
         // Tool names whose completed outputs are appended to the compression
         "protectedTools": [],

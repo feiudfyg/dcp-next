@@ -15,12 +15,13 @@ import {
 } from "./protected-content"
 import {
     appendMissingBlockSummaries,
-    discardMissingBlockSummaries,
     injectBlockPlaceholders,
     parseBlockPlaceholders,
+    parseReplaceBlockIds,
     resolveRanges,
     validateArgs,
     validateNonOverlapping,
+    validateReplaceBlockIds,
     validateSummaryPlaceholders,
 } from "./range-utils"
 import {
@@ -51,6 +52,12 @@ function buildSchema() {
                     summary: tool.schema
                         .string()
                         .describe("Complete technical summary replacing all content in range"),
+                    replaceBlockIds: tool.schema
+                        .array(tool.schema.string())
+                        .optional()
+                        .describe(
+                            'Optional prior block IDs to replace, e.g. ["b2"]. Listed blocks are removed and must be covered by your summary. Unlisted omitted prior blocks are preserved automatically.',
+                        ),
                 }),
             )
             .describe(
@@ -108,6 +115,15 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                     searchContext.summaryByBlockId,
                 )
 
+                const replaceBlockIds = ctx.config.compress.allowPriorSummaryDrop
+                    ? parseReplaceBlockIds(plan.entry)
+                    : []
+                validateReplaceBlockIds(
+                    replaceBlockIds,
+                    plan.selection.requiredBlockIds,
+                    missingBlockIds,
+                )
+
                 const injected = injectBlockPlaceholders(
                     plan.entry.summary,
                     parsedPlaceholders,
@@ -143,18 +159,13 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                     ctx.config.protectedFilePatterns,
                 )
 
-                const completedSummary = ctx.config.compress.allowPriorSummaryDrop
-                    ? discardMissingBlockSummaries(
-                          summaryWithTools,
-                          missingBlockIds,
-                          injected.consumedBlockIds,
-                      )
-                    : appendMissingBlockSummaries(
-                          summaryWithTools,
-                          missingBlockIds,
-                          searchContext.summaryByBlockId,
-                          injected.consumedBlockIds,
-                      )
+                const completedSummary = appendMissingBlockSummaries(
+                    summaryWithTools,
+                    missingBlockIds,
+                    searchContext.summaryByBlockId,
+                    injected.consumedBlockIds,
+                    replaceBlockIds,
+                )
 
                 preparedPlans.push({
                     entry: plan.entry,

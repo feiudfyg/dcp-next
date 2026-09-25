@@ -255,7 +255,7 @@
                 "allowPriorSummaryDrop": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Let the model re-compress prior summaries: including a (bN) placeholder keeps it verbatim, omitting it replaces that summary with the new condensed summary. When false, every required prior summary is preserved."
+                    "description": "Let the model re-compress prior summaries by listing them in replaceBlockIds; listed blocks are removed and must be covered by the new summary. Unlisted omitted blocks are always preserved. When false, replaceBlockIds is ignored."
                 },
                 "protectedTools": {
                     "type": "array",

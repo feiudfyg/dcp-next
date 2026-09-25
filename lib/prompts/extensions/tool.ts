@@ -29,20 +29,19 @@ Prior block summaries are visible in context as \`[Compressed conversation secti
 export const RANGE_PRIOR_SUMMARY_DROP_EXTENSION = `
 REPLACING PRIOR SUMMARIES
 
-For each required prior block in the range, we choose one behavior:
+We re-compress an earlier summary by listing its block ID in \`replaceBlockIds\` for
+that range entry. A listed block is removed, so our new summary MUST cover its
+essential content in condensed form.
 
-- Keep it verbatim: include its \`(bN)\` placeholder.
-- Replace it: omit its \`(bN)\` placeholder. The old summary is removed, so our new
-  summary MUST cover that block's essential content in condensed form.
-
-This is how we re-compress earlier summaries to a smaller size.`
+For every required prior block we do not list, we include its \`(bN)\` placeholder to
+keep it. Omitted unlisted blocks are preserved automatically, so omission alone never
+loses information.`
 
 export const RANGE_PRIOR_SUMMARY_PRESERVE_EXTENSION = `
 PRESERVING PRIOR SUMMARIES
 
-Every required prior block must keep its \`(bN)\` placeholder exactly once. Prior
-summaries that are omitted are appended automatically, so omitting one does not
-reduce context.`
+Every required prior block is preserved. Include each \`(bN)\` placeholder exactly once.
+\`replaceBlockIds\` is ignored while \`allowPriorSummaryDrop\` is disabled.`
 
 export const MESSAGE_FORMAT_EXTENSION = `
 THE FORMAT OF COMPRESS

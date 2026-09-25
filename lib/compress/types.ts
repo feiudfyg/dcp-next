@@ -15,6 +15,7 @@ export interface CompressRangeEntry {
     startId: string
     endId: string
     summary: string
+    replaceBlockIds?: string[]
 }
 
 export interface CompressRangeToolArgs {

@@ -22,6 +22,7 @@ Compressed block IDs use the `bN` form (never `mNNNN`) and the same XML metadata
 Rules:
 
 - We reference each prior block we keep with its exact `(bN)` placeholder.
+- We list a prior block in `replaceBlockIds` only to replace it; unlisted omitted blocks are kept automatically.
 - We do not invent placeholders for blocks outside the range.
 - We treat `(bN)` placeholders as RESERVED TOKENS. We emit `(bN)` text only as intentional placeholders.
 - When we mention a block in prose, we write plain text like `compressed bN`.

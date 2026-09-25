@@ -11,7 +11,7 @@ export function buildCompressedBlockGuidance(
     const blockCount = refs.length
     const blockList = blockCount > 0 ? refs.join(", ") : "none"
     const action = allowPriorSummaryDrop
-        ? "- Prior blocks are re-compressible. Include a block's `(bN)` placeholder to keep it verbatim, or omit it to replace that summary with our condensed new summary."
+        ? "- Prior blocks are re-compressible. Include a block's `(bN)` placeholder to keep it, or list it in `replaceBlockIds` to replace it with our condensed summary. Unlisted omitted blocks are preserved automatically."
         : "- Prior blocks are re-compressible. We may include them in a new range; include each required `(bN)` placeholder exactly once."
 
     return [

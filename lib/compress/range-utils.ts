@@ -1,7 +1,9 @@
 import type { CompressionBlock, SessionState } from "../state"
+import { parseBlockRef } from "../message-ids"
 import { resolveAnchorMessageId, resolveBoundaryIds, resolveSelection } from "./search"
 import type {
     BoundaryReference,
+    CompressRangeEntry,
     CompressRangeToolArgs,
     InjectedSummaryResult,
     ParsedBlockPlaceholder,
@@ -34,6 +36,17 @@ export function validateArgs(args: CompressRangeToolArgs): void {
 
         if (typeof entry?.summary !== "string" || entry.summary.trim().length === 0) {
             throw new Error(`${prefix}.summary is required and must be a non-empty string`)
+        }
+
+        if (entry?.replaceBlockIds !== undefined) {
+            if (
+                !Array.isArray(entry.replaceBlockIds) ||
+                !entry.replaceBlockIds.every(
+                    (value) => typeof value === "string" && value.trim().length > 0,
+                )
+            ) {
+                throw new Error(`${prefix}.replaceBlockIds must be an array of block IDs like "b2"`)
+            }
         }
     }
 }
@@ -228,13 +241,22 @@ export function appendMissingBlockSummaries(
     missingBlockIds: number[],
     summaryByBlockId: Map<number, CompressionBlock>,
     consumedBlockIds: number[],
+    replaceBlockIds: number[] = [],
 ): InjectedSummaryResult {
     const consumedSeen = new Set<number>(consumedBlockIds)
     const consumed = [...consumedBlockIds]
+    const replaceSeen = new Set<number>(replaceBlockIds)
 
     const missingSummaries: string[] = []
     for (const blockId of missingBlockIds) {
         if (consumedSeen.has(blockId)) {
+            continue
+        }
+
+        consumedSeen.add(blockId)
+        consumed.push(blockId)
+
+        if (replaceSeen.has(blockId)) {
             continue
         }
 
@@ -244,8 +266,6 @@ export function appendMissingBlockSummaries(
         }
 
         missingSummaries.push(`\n### (b${blockId})\n${restoreSummary(target.summary)}`)
-        consumedSeen.add(blockId)
-        consumed.push(blockId)
     }
 
     if (missingSummaries.length === 0) {
@@ -264,26 +284,44 @@ export function appendMissingBlockSummaries(
     }
 }
 
-export function discardMissingBlockSummaries(
-    summary: string,
-    missingBlockIds: number[],
-    consumedBlockIds: number[],
-): InjectedSummaryResult {
-    const consumedSeen = new Set<number>(consumedBlockIds)
-    const consumed = [...consumedBlockIds]
+export function parseReplaceBlockIds(entry: CompressRangeEntry): number[] {
+    const result: number[] = []
+    const seen = new Set<number>()
 
-    for (const blockId of missingBlockIds) {
-        if (consumedSeen.has(blockId)) {
-            continue
+    for (const raw of entry.replaceBlockIds ?? []) {
+        const blockId = parseBlockRef(raw)
+        if (blockId === null) {
+            throw new Error(`Invalid replaceBlockIds entry: ${raw}. Use block IDs like "b2".`)
         }
-
-        consumedSeen.add(blockId)
-        consumed.push(blockId)
+        if (!seen.has(blockId)) {
+            seen.add(blockId)
+            result.push(blockId)
+        }
     }
 
-    return {
-        expandedSummary: summary,
-        consumedBlockIds: consumed,
+    return result
+}
+
+export function validateReplaceBlockIds(
+    replaceBlockIds: number[],
+    requiredBlockIds: number[],
+    missingBlockIds: number[],
+): void {
+    const required = new Set(requiredBlockIds)
+    const missing = new Set(missingBlockIds)
+
+    for (const blockId of replaceBlockIds) {
+        if (!required.has(blockId)) {
+            throw new Error(
+                `replaceBlockIds lists b${blockId}, which is not a prior block inside the selected range.`,
+            )
+        }
+
+        if (!missing.has(blockId)) {
+            throw new Error(
+                `b${blockId} is both referenced by a (bN) placeholder and listed in replaceBlockIds. Keep it or replace it, not both.`,
+            )
+        }
     }
 }
 
