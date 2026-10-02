@@ -266,10 +266,11 @@ export function ContextMapDialog(props: {
 
 function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
     const entry = props.entry
+    const range =
+        entry.startRef === entry.endRef ? entry.startRef : `${entry.startRef}..${entry.endRef}`
+
     if (entry.kind === "compressed") {
         const topic = (entry.topic || "(no topic)").replace(/\s+/g, " ").trim()
-        const range =
-            entry.startRef === entry.endRef ? entry.startRef : `${entry.startRef}..${entry.endRef}`
         return (
             <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1} width="100%">
                 <box width={2} flexShrink={0}>
@@ -277,26 +278,26 @@ function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
                         {"▣"}
                     </text>
                 </box>
-                <box width={6} flexShrink={0}>
+                <box width={7} flexShrink={0}>
                     <text fg={props.theme.primary} attributes={TextAttributes.BOLD} truncate>
                         {`b${entry.blockId}`}
                     </text>
                 </box>
-                <box width={6} flexShrink={0}>
+                <box width={8} flexShrink={0}>
                     <text fg={props.theme.textMuted} truncate>{`${entry.messageCount} msg`}</text>
                 </box>
-                <box width={12} flexShrink={0}>
+                <box width={17} flexShrink={0}>
                     <text fg={props.theme.textMuted} truncate>
                         {range}
                     </text>
                 </box>
-                <box width={11} flexShrink={0}>
+                <box width={12} flexShrink={0}>
                     <text fg={props.theme.textMuted} truncate>
                         {`~${formatTokenCount(entry.compressedTokens, true)}→${formatTokenCount(entry.summaryTokens, true)}`}
                     </text>
                 </box>
                 <box flexGrow={1} flexShrink={1}>
-                    <text fg={props.theme.text} truncate>
+                    <text fg={props.theme.text} wrapMode="word">
                         {topic}
                     </text>
                 </box>
@@ -304,8 +305,6 @@ function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
         )
     }
 
-    const range =
-        entry.startRef === entry.endRef ? entry.startRef : `${entry.startRef}..${entry.endRef}`
     const preview = entry.userPreview || "(no user message)"
     return (
         <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1} width="100%">
@@ -314,18 +313,22 @@ function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
                     {"▸"}
                 </text>
             </box>
-            <box width={6} flexShrink={0} />
-            <box width={6} flexShrink={0}>
+            <box width={7} flexShrink={0} />
+            <box width={8} flexShrink={0}>
                 <text fg={props.theme.textMuted} truncate>{`${entry.messageCount} msg`}</text>
             </box>
-            <box width={12} flexShrink={0}>
+            <box width={17} flexShrink={0}>
                 <text fg={props.theme.textMuted} truncate>
                     {range}
                 </text>
             </box>
-            <box width={11} flexShrink={0} />
+            <box width={12} flexShrink={0}>
+                <text fg={props.theme.textMuted} truncate>
+                    {`~${formatTokenCount(entry.tokens, true)}`}
+                </text>
+            </box>
             <box flexGrow={1} flexShrink={1}>
-                <text fg={props.theme.text} truncate>
+                <text fg={props.theme.text} wrapMode="word">
                     {preview}
                 </text>
             </box>

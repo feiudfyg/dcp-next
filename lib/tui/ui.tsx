@@ -47,7 +47,7 @@ export function DcpFrame(props: {
                     theme={theme}
                     label="close"
                     variant="primary"
-                    onClick={() => props.api.ui.dialog.clear()}
+                    onClick={props.onBack ?? (() => props.api.ui.dialog.clear())}
                 />
             </box>
         </box>

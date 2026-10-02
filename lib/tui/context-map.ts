@@ -1,5 +1,6 @@
 import { isIgnoredUserMessage } from "../messages/query"
 import type { SessionState, WithParts } from "../state"
+import { countAllMessageTokens } from "../token-utils"
 
 export type ContextMapEntry =
     | {
@@ -17,6 +18,7 @@ export type ContextMapEntry =
           startRef: string
           endRef: string
           messageCount: number
+          tokens: number
           userPreview: string
       }
 
@@ -81,6 +83,7 @@ export function buildContextMap(state: SessionState, messages: WithParts[]): Con
 
         compressed = undefined
 
+        const tokens = countAllMessageTokens(message)
         const isUser = message.info.role === "user" && !isIgnoredUserMessage(message)
         if (isUser) {
             flushTurn()
@@ -89,6 +92,7 @@ export function buildContextMap(state: SessionState, messages: WithParts[]): Con
                 startRef: ref,
                 endRef: ref,
                 messageCount: 1,
+                tokens,
                 userPreview: previewOf(message),
             }
             continue
@@ -100,6 +104,7 @@ export function buildContextMap(state: SessionState, messages: WithParts[]): Con
                 startRef: ref,
                 endRef: ref,
                 messageCount: 1,
+                tokens,
                 userPreview: "",
             }
             continue
@@ -107,6 +112,7 @@ export function buildContextMap(state: SessionState, messages: WithParts[]): Con
 
         turn.endRef = ref
         turn.messageCount += 1
+        turn.tokens += tokens
     }
 
     flushTurn()

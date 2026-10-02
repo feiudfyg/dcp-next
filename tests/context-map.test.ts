@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { assignMessageRefs } from "../lib/message-ids"
 import { createSessionState, type CompressionBlock, type WithParts } from "../lib/state"
+import { countAllMessageTokens } from "../lib/token-utils"
 import { buildContextMap } from "../lib/tui/context-map"
 
 function message(id: string, role: "user" | "assistant", created: number, text: string): WithParts {
@@ -68,6 +69,7 @@ test("buildContextMap collapses compressed messages and splits turns on user inp
         startRef: "m0001",
         endRef: "m0001",
         messageCount: 1,
+        tokens: countAllMessageTokens(messages[0]),
         userPreview: "hello",
     })
 
@@ -85,6 +87,7 @@ test("buildContextMap collapses compressed messages and splits turns on user inp
         startRef: "m0004",
         endRef: "m0004",
         messageCount: 1,
+        tokens: countAllMessageTokens(messages[3]),
         userPreview: "",
     })
 })
@@ -131,11 +134,16 @@ test("buildContextMap merges a user turn with following assistant messages", () 
 
     const entries = buildContextMap(state, messages)
     assert.equal(entries.length, 2)
+
     assert.deepEqual(entries[0], {
         kind: "turn",
         startRef: "m0001",
         endRef: "m0003",
         messageCount: 3,
+        tokens:
+            countAllMessageTokens(messages[0]) +
+            countAllMessageTokens(messages[1]) +
+            countAllMessageTokens(messages[2]),
         userPreview: "first question",
     })
     assert.deepEqual(entries[1], {
@@ -143,6 +151,7 @@ test("buildContextMap merges a user turn with following assistant messages", () 
         startRef: "m0004",
         endRef: "m0005",
         messageCount: 2,
+        tokens: countAllMessageTokens(messages[3]) + countAllMessageTokens(messages[4]),
         userPreview: "second question",
     })
 })
