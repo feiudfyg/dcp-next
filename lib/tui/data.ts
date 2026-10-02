@@ -35,16 +35,53 @@ export function activeSessionID(api: TuiApi): string | undefined {
 }
 
 async function fetchFullMessages(api: TuiApi, sessionID: string): Promise<WithParts[]> {
-    try {
-        const client = api.client as unknown as {
-            session: { messages: (options: unknown) => Promise<unknown> }
-        }
-        const response = await client.session.messages({ path: { sessionID } })
-        const data = (response as { data?: unknown })?.data ?? response
-        return filterMessages(data)
-    } catch {
-        return []
+    const client = api.client as unknown as {
+        session: { messages: (options: unknown) => Promise<unknown> }
     }
+    const byId = new Map<string, unknown>()
+    let before: string | undefined
+
+    for (let page = 0; page < 500; page++) {
+        let response: any
+        try {
+            response = await client.session.messages({
+                path: { sessionID },
+                query: before ? { limit: 200, before } : { limit: 200 },
+            })
+        } catch {
+            break
+        }
+
+        const payload = response?.data ?? response
+        const items: any[] = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload?.items)
+              ? payload.items
+              : []
+        if (items.length === 0) {
+            break
+        }
+
+        let added = 0
+        for (const item of items) {
+            const id = item?.info?.id
+            if (typeof id === "string" && !byId.has(id)) {
+                byId.set(id, item)
+                added++
+            }
+        }
+
+        const cursor = payload?.cursor ?? response?.cursor
+        if (!cursor || cursor === before || added === 0) {
+            break
+        }
+        before = cursor
+        if (items.length < 200) {
+            break
+        }
+    }
+
+    return filterMessages([...byId.values()])
 }
 
 export function fallbackSessionMessages(api: TuiApi, sessionID: string): WithParts[] {

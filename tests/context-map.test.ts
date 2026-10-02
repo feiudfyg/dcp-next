@@ -38,7 +38,7 @@ function block(overrides: Partial<CompressionBlock>): CompressionBlock {
     } as CompressionBlock
 }
 
-test("buildContextMap collapses consecutive compressed messages into one entry", () => {
+test("buildContextMap collapses compressed messages and splits turns on user input", () => {
     const state = createSessionState()
     const messages = [
         message("m1", "user", 1, "hello"),
@@ -63,12 +63,12 @@ test("buildContextMap collapses consecutive compressed messages into one entry",
     const entries = buildContextMap(state, messages)
     assert.equal(entries.length, 3)
 
-    assert.equal(entries[0].kind, "message")
     assert.deepEqual(entries[0], {
-        kind: "message",
-        ref: "m0001",
-        role: "user",
-        preview: "hello",
+        kind: "turn",
+        startRef: "m0001",
+        endRef: "m0001",
+        messageCount: 1,
+        userPreview: "hello",
     })
 
     assert.equal(entries[1].kind, "compressed")
@@ -80,13 +80,16 @@ test("buildContextMap collapses consecutive compressed messages into one entry",
         assert.equal(entries[1].compressedTokens, 1000)
     }
 
-    assert.equal(entries[2].kind, "message")
-    if (entries[2].kind === "message") {
-        assert.equal(entries[2].ref, "m0004")
-    }
+    assert.deepEqual(entries[2], {
+        kind: "turn",
+        startRef: "m0004",
+        endRef: "m0004",
+        messageCount: 1,
+        userPreview: "",
+    })
 })
 
-test("buildContextMap keeps separate compressed runs for different blocks", () => {
+test("buildContextMap keeps separate compressed runs and turn runs for different blocks", () => {
     const state = createSessionState()
     const messages = [
         message("m1", "assistant", 1, "a"),
@@ -112,5 +115,34 @@ test("buildContextMap keeps separate compressed runs for different blocks", () =
     assert.equal(entries.length, 3)
     assert.equal(entries[0].kind, "compressed")
     assert.equal(entries[1].kind, "compressed")
-    assert.equal(entries[2].kind, "message")
+    assert.equal(entries[2].kind, "turn")
+})
+
+test("buildContextMap merges a user turn with following assistant messages", () => {
+    const state = createSessionState()
+    const messages = [
+        message("m1", "user", 1, "first question"),
+        message("m2", "assistant", 2, "answer"),
+        message("m3", "assistant", 3, "follow up"),
+        message("m4", "user", 4, "second question"),
+        message("m5", "assistant", 5, "answer two"),
+    ]
+    assignMessageRefs(state, messages)
+
+    const entries = buildContextMap(state, messages)
+    assert.equal(entries.length, 2)
+    assert.deepEqual(entries[0], {
+        kind: "turn",
+        startRef: "m0001",
+        endRef: "m0003",
+        messageCount: 3,
+        userPreview: "first question",
+    })
+    assert.deepEqual(entries[1], {
+        kind: "turn",
+        startRef: "m0004",
+        endRef: "m0005",
+        messageCount: 2,
+        userPreview: "second question",
+    })
 })

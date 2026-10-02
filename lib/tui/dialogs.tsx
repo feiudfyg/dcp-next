@@ -304,30 +304,29 @@ function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
         )
     }
 
-    const role = entry.role === "user" ? "user" : "asst"
+    const range =
+        entry.startRef === entry.endRef ? entry.startRef : `${entry.startRef}..${entry.endRef}`
+    const preview = entry.userPreview || "(no user message)"
     return (
         <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1} width="100%">
             <box width={2} flexShrink={0}>
-                <text fg={props.theme.textMuted}>{"·"}</text>
+                <text fg={props.theme.info} attributes={TextAttributes.BOLD}>
+                    {"▸"}
+                </text>
             </box>
+            <box width={6} flexShrink={0} />
             <box width={6} flexShrink={0}>
+                <text fg={props.theme.textMuted} truncate>{`${entry.messageCount} msg`}</text>
+            </box>
+            <box width={12} flexShrink={0}>
                 <text fg={props.theme.textMuted} truncate>
-                    {entry.ref}
+                    {range}
                 </text>
             </box>
-            <box width={6} flexShrink={0}>
-                <text
-                    fg={entry.role === "user" ? props.theme.info : props.theme.textMuted}
-                    truncate
-                >
-                    {role}
-                </text>
-            </box>
-            <box width={12} flexShrink={0} />
             <box width={11} flexShrink={0} />
             <box flexGrow={1} flexShrink={1}>
-                <text fg={props.theme.textMuted} truncate>
-                    {entry.preview}
+                <text fg={props.theme.text} truncate>
+                    {preview}
                 </text>
             </box>
         </box>
