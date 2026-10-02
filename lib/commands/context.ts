@@ -14,11 +14,10 @@
  *
  * HOW WE CALCULATE EACH CATEGORY:
  *
- *   SYSTEM = firstAssistant.input + cache.read + cache.write - tokenizer(firstUserMessage)
- *            The first response's total input (input + cache.read + cache.write)
- *            contains system + first user message. On the first request of a
- *            session, the system prompt appears in cache.write (cache creation),
- *            not cache.read.
+ *   SYSTEM = total - user - tools - assistant
+ *            Calculated as residual: everything in context that is not an
+ *            unpruned user message, tool payload, or assistant text part. This is
+ *            dominated by the system prompt plus provider-reported overhead.
  *
  *   TOOLS  = tokenizer(toolInputs + toolOutputs) - prunedTokens
  *            We must tokenize tools anyway for pruning decisions.
@@ -26,18 +25,16 @@
  *   USER   = tokenizer(all user messages)
  *            User messages are typically small, so estimation is acceptable.
  *
- *   ASSISTANT = total - system - user - tools
- *               Calculated as residual. This absorbs:
- *               - Assistant text output tokens
- *               - Reasoning tokens (if persisted by the model)
- *               - Any estimation errors
+ *   ASSISTANT = tokenizer(all assistant text parts still in context)
+ *               Measured directly so assistant output is visible in the breakdown.
  *
  *   TOTAL  = input + output + reasoning + cache.read + cache.write
  *            Matches opencode's UI display.
  *
- * WHY ASSISTANT IS THE RESIDUAL:
- *   If reasoning tokens persist in context (model-dependent), they semantically
- *   belong with "Assistant" since reasoning IS assistant-generated content.
+ * WHY SYSTEM IS THE RESIDUAL:
+ *   The API only reports one aggregate context number per request, and the system
+ *   prompt is the part we cannot tokenize reliably. Treating it as the residual
+ *   keeps every measurable category honest instead of hiding assistant output.
  */
 
 import type { Logger } from "../logger"
@@ -50,7 +47,6 @@ import {
     countTokens,
     extractCompletedToolOutput,
     getCurrentParams,
-    sumAssistantInputTokens,
     sumAssistantTokens,
 } from "../token-utils"
 import type { AssistantMessage, TextPart, ToolPart } from "@opencode-ai/sdk/v2"
@@ -91,8 +87,6 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
         total: 0,
     }
 
-    let firstAssistant: AssistantMessage | undefined
-    let firstCreated = Number.POSITIVE_INFINITY
     let lastAssistant: AssistantMessage | undefined
     let lastCreated = Number.NEGATIVE_INFINITY
     for (const msg of messages) {
@@ -101,14 +95,6 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
         }
         const assistantInfo = msg.info as AssistantMessage
         const created = assistantInfo.time?.created ?? 0
-        const hasInput =
-            (assistantInfo.tokens?.input || 0) > 0 ||
-            (assistantInfo.tokens?.cache?.read || 0) > 0 ||
-            (assistantInfo.tokens?.cache?.write || 0) > 0
-        if (hasInput && created < firstCreated) {
-            firstAssistant = assistantInfo
-            firstCreated = created
-        }
         if ((assistantInfo.tokens?.output || 0) > 0 && created > lastCreated) {
             lastAssistant = assistantInfo
             lastCreated = created
@@ -118,10 +104,9 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
     breakdown.total = lastAssistant ? sumAssistantTokens(lastAssistant) : 0
 
     const userTextParts: string[] = []
+    const assistantTextParts: string[] = []
     const toolInputParts: string[] = []
     const toolOutputParts: string[] = []
-    let firstUserText = ""
-    let firstUserCreated = Number.POSITIVE_INFINITY
     const allToolIds = new Set<string>()
     const activeToolIds = new Set<string>()
     const prunedByMessageToolIds = new Set<string>()
@@ -171,20 +156,9 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
             ) {
                 const textPart = part as TextPart
                 userTextParts.push(textPart.text || "")
-            }
-        }
-
-        if (msg.info.role === "user" && !isIgnoredUser && !isCompacted) {
-            const created = msg.info.time?.created ?? 0
-            if (created < firstUserCreated) {
-                firstUserCreated = created
-                let text = ""
-                for (const part of parts) {
-                    if (part.type === "text") {
-                        text += (part as TextPart).text || ""
-                    }
-                }
-                firstUserText = text
+            } else if (part.type === "text" && msg.info.role === "assistant" && !isCompacted) {
+                const textPart = part as TextPart
+                assistantTextParts.push(textPart.text || "")
             }
         }
     }
@@ -211,24 +185,15 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
     breakdown.prunedToolCount = prunedToolIds.size
     breakdown.prunedMessageCount = prunedMessageCount
 
-    const firstUserTokens = countTokens(firstUserText)
     breakdown.user = countTokens(userTextParts.join("\n"))
     const toolInputTokens = countTokens(toolInputParts.join("\n"))
     const toolOutputTokens = countTokens(toolOutputParts.join("\n"))
 
-    if (firstAssistant) {
-        const firstInput = sumAssistantInputTokens(firstAssistant)
-        breakdown.system = Math.max(0, firstInput - firstUserTokens)
-    }
-
     breakdown.tools = toolInputTokens + toolOutputTokens
-    breakdown.system = Math.min(
-        breakdown.system,
-        Math.max(0, breakdown.total - breakdown.user - breakdown.tools),
-    )
-    breakdown.assistant = Math.max(
+    breakdown.assistant = countTokens(assistantTextParts.join("\n"))
+    breakdown.system = Math.max(
         0,
-        breakdown.total - breakdown.system - breakdown.user - breakdown.tools,
+        breakdown.total - breakdown.user - breakdown.tools - breakdown.assistant,
     )
 
     return breakdown
