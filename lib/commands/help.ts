@@ -20,22 +20,30 @@ export interface HelpCommandContext {
 }
 
 const TUI_COMMANDS: [string, string][] = [
-    ["DCP Context", "Show token usage breakdown for current session"],
-    ["DCP Stats", "Show DCP pruning statistics"],
-    ["DCP Help", "Show this help in a modal"],
+    ["/dcp-panel", "Open the DCP panel (context, stats, manual mode)"],
 ]
 
 const TOOL_COMMANDS: Record<string, [string, string]> = {
     compress: ["/dcp-compress [focus]", "Trigger manual compress tool execution"],
     decompress: ["/dcp decompress <n>", "Restore selected compression"],
     recompress: ["/dcp recompress <n>", "Re-apply a user-decompressed compression"],
+    stats: ["/dcp stats", "Show DCP pruning statistics"],
+    context: ["/dcp context", "Show token usage breakdown"],
+    sweep: ["/dcp sweep [n]", "Run manual context pruning"],
+    manual: ["/dcp manual [on|off]", "Toggle manual mode"],
 }
 
 function getVisibleCommands(state: SessionState, config: PluginConfig): [string, string][] {
     const commands = [...TUI_COMMANDS]
+    commands.push(
+        TOOL_COMMANDS.context,
+        TOOL_COMMANDS.stats,
+        TOOL_COMMANDS.sweep,
+        TOOL_COMMANDS.manual,
+    )
 
     if (compressPermission(state, config) !== "deny") {
-        commands.push(TOOL_COMMANDS.compress)
+        commands.push(TOOL_COMMANDS.compress, TOOL_COMMANDS.decompress, TOOL_COMMANDS.recompress)
     }
 
     return commands

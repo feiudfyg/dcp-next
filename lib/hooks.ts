@@ -202,6 +202,8 @@ export function createCommandExecuteHandler(
                 return
             }
 
+            output.parts.length = 0
+
             const args = (input.arguments || "").trim().split(/\s+/).filter(Boolean)
             const isCompressCommand = input.command === "dcp-compress"
             const subcommand = isCompressCommand ? "compress" : args[0]?.toLowerCase() || ""
