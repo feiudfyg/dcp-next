@@ -24,6 +24,26 @@ export const isMessageCompacted = (state: SessionState, msg: WithParts): boolean
     return false
 }
 
+export function addPrunedTokens(state: SessionState, tokens: number, flush = true): void {
+    if (!Number.isFinite(tokens) || tokens <= 0) {
+        return
+    }
+
+    state.stats.pruneTokenCounter += tokens
+    if (flush) {
+        state.stats.totalPruneTokens += state.stats.pruneTokenCounter
+        state.stats.pruneTokenCounter = 0
+    }
+}
+
+export function subtractPrunedTokens(state: SessionState, tokens: number): void {
+    if (!Number.isFinite(tokens) || tokens <= 0) {
+        return
+    }
+
+    state.stats.totalPruneTokens = Math.max(0, state.stats.totalPruneTokens - tokens)
+}
+
 interface PersistedPruneMessagesState {
     byMessageId: Record<string, PrunedMessageEntry>
     blocksById: Record<string, CompressionBlock>

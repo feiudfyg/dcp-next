@@ -1,4 +1,5 @@
 import type { CompressionBlock, PruneMessagesState, SessionState } from "../state"
+import { addPrunedTokens } from "../state/utils"
 import { formatBlockRef, formatMessageIdTag } from "../message-ids"
 import type { AppliedCompressionResult, CompressionStateInput, SelectionResolution } from "./types"
 
@@ -258,6 +259,14 @@ export function applyCompressionState(
         }
     }
 
+    const alreadyPrunedToolTokens = selection.toolIds.reduce((total, toolId) => {
+        if (initiallyActiveToolIds.has(toolId)) {
+            return total
+        }
+        return total + (state.prune.tools.get(toolId) ?? 0)
+    }, 0)
+    compressedTokens = Math.max(0, compressedTokens - alreadyPrunedToolTokens)
+
     block.directMessageIds = [...newlyCompressedMessageIds]
     block.directToolIds = [...newlyCompressedToolIds]
 
@@ -265,9 +274,7 @@ export function applyCompressionState(
 
     const netRemovedTokens = compressedTokens + consumedSummaryTokens - input.summaryTokens
 
-    state.stats.pruneTokenCounter += compressedTokens
-    state.stats.totalPruneTokens += state.stats.pruneTokenCounter
-    state.stats.pruneTokenCounter = 0
+    addPrunedTokens(state, compressedTokens)
 
     return {
         compressedTokens,

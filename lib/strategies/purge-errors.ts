@@ -1,6 +1,7 @@
 import { PluginConfig } from "../config"
 import { Logger } from "../logger"
 import type { SessionState, WithParts } from "../state"
+import { addPrunedTokens } from "../state/utils"
 import {
     getFilePathsFromParameters,
     isFilePathProtected,
@@ -76,7 +77,7 @@ export const purgeErrors = (
     }
 
     if (newPruneIds.length > 0) {
-        state.stats.totalPruneTokens += getTotalToolTokens(state, newPruneIds)
+        addPrunedTokens(state, getTotalToolTokens(state, newPruneIds))
         for (const id of newPruneIds) {
             const entry = state.toolParameters.get(id)
             state.prune.tools.set(id, entry?.tokenCount ?? 0)

@@ -1,6 +1,7 @@
 import { PluginConfig } from "../config"
 import { Logger } from "../logger"
 import type { SessionState, WithParts } from "../state"
+import { addPrunedTokens } from "../state/utils"
 import {
     getFilePathsFromParameters,
     isFilePathProtected,
@@ -82,7 +83,7 @@ export const deduplicate = (
         }
     }
 
-    state.stats.totalPruneTokens += getTotalToolTokens(state, newPruneIds)
+    addPrunedTokens(state, getTotalToolTokens(state, newPruneIds))
 
     if (newPruneIds.length > 0) {
         for (const id of newPruneIds) {

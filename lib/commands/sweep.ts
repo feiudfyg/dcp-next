@@ -9,6 +9,7 @@
 
 import type { Logger } from "../logger"
 import type { SessionState, WithParts, ToolParameterEntry } from "../state"
+import { addPrunedTokens } from "../state/utils"
 import type { PluginConfig } from "../config"
 import { sendIgnoredMessage } from "../ui/notification"
 import { formatPrunedItemsList } from "../ui/utils"
@@ -226,10 +227,7 @@ export async function handleSweepCommand(ctx: SweepCommandContext): Promise<void
         const entry = state.toolParameters.get(id)
         state.prune.tools.set(id, entry?.tokenCount ?? 0)
     }
-    state.stats.pruneTokenCounter += tokensSaved
-    state.stats.totalPruneTokens += state.stats.pruneTokenCounter
-    state.stats.pruneTokenCounter = 0
-
+    addPrunedTokens(state, tokensSaved)
     // Collect metadata for logging
     const toolMetadata: Map<string, ToolParameterEntry> = new Map()
     for (const id of newToolIds) {

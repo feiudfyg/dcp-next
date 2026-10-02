@@ -1,5 +1,6 @@
 import type { Logger } from "../logger"
 import type { CompressionBlock, PruneMessagesState, SessionState, WithParts } from "../state"
+import { subtractPrunedTokens } from "../state/utils"
 import { syncCompressionBlocks } from "../messages"
 import { parseBlockRef } from "../message-ids"
 import { getCurrentParams } from "../token-utils"
@@ -249,7 +250,7 @@ export async function handleDecompressCommand(ctx: DecompressCommandContext): Pr
         }
     }
 
-    state.stats.totalPruneTokens = Math.max(0, state.stats.totalPruneTokens - restoredTokens)
+    subtractPrunedTokens(state, restoredTokens)
 
     const reactivatedBlockIds = Array.from(messagesState.activeBlockIds)
         .filter((blockId) => !activeBlockIdsBefore.has(blockId))

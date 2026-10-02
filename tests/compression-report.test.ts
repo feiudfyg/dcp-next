@@ -71,13 +71,17 @@ test("formatCompressionResult uses the singular message noun", () => {
     assert.match(text, /^Compressed 1 new message into b1\./)
 })
 
-function buildSelection(messageIds: string[], tokens: Record<string, number>): SelectionResolution {
+function buildSelection(
+    messageIds: string[],
+    tokens: Record<string, number>,
+    toolIds: string[] = [],
+): SelectionResolution {
     return {
         startReference: { kind: "message", rawIndex: 0, messageId: messageIds[0] },
         endReference: { kind: "message", rawIndex: 0, messageId: messageIds[0] },
         messageIds,
         messageTokenById: new Map(Object.entries(tokens)),
-        toolIds: [],
+        toolIds,
         requiredBlockIds: [],
     }
 }
@@ -148,6 +152,33 @@ test("applyCompressionState folds consumed summary tokens into the net reduction
     assert.equal(applied.netRemovedTokens, 550)
     assert.equal(applied.newlyCompressedMessageIds.length, 1)
     assert.equal(state.prune.messages.blocksById.get(1)?.active, false)
+})
+
+test("applyCompressionState does not double count tool tokens already pruned by strategies", () => {
+    const state = createSessionState()
+    state.prune.tools.set("call-1", 300)
+
+    const applied = applyCompressionState(
+        state,
+        {
+            topic: "t",
+            batchTopic: "t",
+            startId: "m0002",
+            endId: "m0002",
+            mode: "range",
+            runId: 1,
+            compressMessageId: "msg-new",
+            summaryTokens: 10,
+        },
+        buildSelection(["y"], { y: 500 }, ["call-1"]),
+        "anchor-y",
+        1,
+        "[Compressed conversation section]\nsummary\n\n",
+        [],
+    )
+
+    assert.equal(applied.compressedTokens, 200)
+    assert.equal(state.stats.totalPruneTokens, 200)
 })
 
 test("applyCompressionState reports a negative net when the summary outweighs the removed content", () => {
