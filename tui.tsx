@@ -3,8 +3,7 @@
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui"
 import { registerCommands } from "./lib/tui/commands"
 import { loadConfig } from "./lib/tui/data"
-import { openPanelRoute } from "./lib/tui/modals"
-import { registerPanelRoute } from "./lib/tui/page"
+import { openPanelRoute, registerPanelRoute } from "./lib/tui/page"
 
 const tui: TuiPluginModule["tui"] = async (api) => {
     const config = loadConfig(api)

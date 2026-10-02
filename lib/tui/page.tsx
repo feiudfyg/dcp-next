@@ -9,10 +9,11 @@ import {
 import { handleDecompressCommand } from "../commands/decompress"
 import { handleRecompressCommand } from "../commands/recompress"
 import { handleSweepCommand } from "../commands/sweep"
+import { buildStatsReport } from "../commands/stats"
 import type { PluginConfig } from "../config"
 import { saveManualModeSetting } from "../state/persistence"
 import { formatTokenCount } from "../ui/utils"
-import { logger, type SessionData } from "./data"
+import { loadSessionData, logger, setFallbackSessionID, type SessionData } from "./data"
 import {
     ContextDialog,
     ContextMapDialog,
@@ -21,7 +22,7 @@ import {
     StatsDialog,
     StatusDialog,
 } from "./dialogs"
-import { PANEL_ROUTE, openPanelRoute } from "./modals"
+import { showStatusDialog } from "./modals"
 import { ActionButton, Card, DcpFrame } from "./ui"
 import type { StatsReport, Theme, TuiApi } from "./types"
 
@@ -36,6 +37,20 @@ type PanelView =
     | "recompress"
     | "compress"
 
+const PANEL_ROUTE = "dcp-panel"
+const PANEL_ALT_ROUTE = "dcp-panel-alt"
+
+const ROUTE_BY_VIEW: Record<Exclude<PanelView, "panel">, string> = {
+    context: "dcp-context",
+    stats: "dcp-stats",
+    map: "dcp-map",
+    help: "dcp-help",
+    sweep: "dcp-sweep",
+    decompress: "dcp-decompress",
+    recompress: "dcp-recompress",
+    compress: "dcp-compress",
+}
+
 export interface PanelParams {
     sessionID: string
     data: SessionData
@@ -45,6 +60,38 @@ export interface PanelParams {
 
 function dialogHeight(api: TuiApi): number {
     return Math.max(20, api.renderer?.terminalHeight ?? 40)
+}
+
+function routeForView(api: TuiApi, view: PanelView): string {
+    if (view === "panel") {
+        return api.route.current.name === PANEL_ROUTE ? PANEL_ALT_ROUTE : PANEL_ROUTE
+    }
+    return ROUTE_BY_VIEW[view]
+}
+
+export async function openPanelRoute(
+    api: TuiApi,
+    config: PluginConfig,
+    view: PanelView = "panel",
+): Promise<void> {
+    const data = await loadSessionData(api, config)
+    api.ui.dialog.clear()
+    if (!data || !data.state.sessionId) {
+        showStatusDialog(api, "DCP", "No session", "Open a session first.")
+        return
+    }
+
+    setFallbackSessionID(data.state.sessionId)
+
+    const params: Record<string, unknown> = {
+        sessionID: data.state.sessionId,
+        data,
+        view,
+    }
+    if (view === "stats") {
+        params.report = await buildStatsReport(data.state, logger)
+    }
+    api.route.navigate(routeForView(api, view), params)
 }
 
 function compressionContext(api: TuiApi, config: PluginConfig, data: SessionData, args: string[]) {
@@ -347,10 +394,23 @@ function TargetRow(props: {
 }
 
 export function registerPanelRoute(api: TuiApi, config: PluginConfig) {
-    api.route.register([
-        {
-            name: PANEL_ROUTE,
-            render: (input) => {
+    const names = [
+        PANEL_ROUTE,
+        PANEL_ALT_ROUTE,
+        "dcp-context",
+        "dcp-stats",
+        "dcp-map",
+        "dcp-help",
+        "dcp-sweep",
+        "dcp-compress",
+        "dcp-decompress",
+        "dcp-recompress",
+    ]
+
+    api.route.register(
+        names.map((name) => ({
+            name,
+            render: (input: { params?: Record<string, unknown> }) => {
                 const params = (input.params ?? {}) as Partial<PanelParams>
                 if (!params.data || !params.sessionID) {
                     return (
@@ -365,6 +425,6 @@ export function registerPanelRoute(api: TuiApi, config: PluginConfig) {
                 }
                 return <PanelPage api={api} config={config} params={params as PanelParams} />
             },
-        },
-    ])
+        })),
+    )
 }
