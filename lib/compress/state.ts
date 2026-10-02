@@ -74,10 +74,12 @@ export function applyCompressionState(
     const included = [...consumed]
 
     let consumedSummaryTokens = 0
+    let consumedCompressedTokens = 0
     for (const consumedBlockId of consumed) {
         const consumedBlock = messagesState.blocksById.get(consumedBlockId)
         if (consumedBlock && consumedBlock.active) {
             consumedSummaryTokens += consumedBlock.summaryTokens
+            consumedCompressedTokens += consumedBlock.compressedTokens
         }
     }
 
@@ -270,7 +272,7 @@ export function applyCompressionState(
     block.directMessageIds = [...newlyCompressedMessageIds]
     block.directToolIds = [...newlyCompressedToolIds]
 
-    block.compressedTokens = compressedTokens
+    block.compressedTokens = compressedTokens + consumedCompressedTokens
 
     const netRemovedTokens = compressedTokens + consumedSummaryTokens - input.summaryTokens
 

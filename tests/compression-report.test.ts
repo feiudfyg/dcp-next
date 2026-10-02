@@ -207,3 +207,40 @@ test("applyCompressionState reports a negative net when the summary outweighs th
     assert.equal(applied.consumedSummaryTokens, 0)
     assert.equal(applied.netRemovedTokens, -50)
 })
+
+test("applyCompressionState inherits compressed tokens when replacing a prior block without new messages", () => {
+    const state = createSessionState()
+    state.prune.messages.byMessageId.set("x", {
+        tokenCount: 400,
+        allBlockIds: [1],
+        activeBlockIds: [1],
+    })
+    const prior = buildPriorBlock(1, ["x"], 100)
+    prior.compressedTokens = 4000
+    state.prune.messages.blocksById.set(1, prior)
+    state.prune.messages.activeBlockIds.add(1)
+    state.prune.messages.activeByAnchorMessageId.set("anchor", 1)
+
+    const applied = applyCompressionState(
+        state,
+        {
+            topic: "t",
+            batchTopic: "t",
+            startId: "m0001",
+            endId: "m0002",
+            mode: "range",
+            runId: 2,
+            compressMessageId: "msg-new",
+            summaryTokens: 40,
+        },
+        buildSelection(["x"], { x: 400 }),
+        "anchor",
+        2,
+        "[Compressed conversation section]\nnew summary\n\n",
+        [1],
+    )
+
+    assert.equal(applied.compressedTokens, 0)
+    assert.equal(state.prune.messages.blocksById.get(2)?.compressedTokens, 4000)
+    assert.equal(state.stats.totalPruneTokens, 0)
+})
