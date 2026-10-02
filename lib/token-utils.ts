@@ -162,3 +162,91 @@ export function countAllMessageTokens(msg: WithParts): number {
     if (texts.length === 0) return 0
     return estimateTokensBatch(texts)
 }
+
+export interface UncompressedSpan {
+    startRef: string
+    endRef: string
+    messageCount: number
+    tokens: number
+}
+
+function formatMessageRef(index: number): string {
+    return `m${String(index).padStart(4, "0")}`
+}
+
+function buildSpan(
+    start: number,
+    end: number,
+    messageCount: number,
+    tokens: number,
+): UncompressedSpan {
+    return {
+        startRef: formatMessageRef(start),
+        endRef: formatMessageRef(end),
+        messageCount,
+        tokens,
+    }
+}
+
+export function findOldestUncompressedSpan(
+    state: SessionState,
+    messages: WithParts[],
+    minMessages = 20,
+    minTokens = 20000,
+): UncompressedSpan | null {
+    const entries: Array<{ position: number; message: WithParts }> = []
+    for (const message of messages) {
+        const pruneEntry = state.prune.messages.byMessageId.get(message.info.id)
+        if (pruneEntry && pruneEntry.activeBlockIds.length > 0) {
+            continue
+        }
+
+        const ref = state.messageIds.byRawId.get(message.info.id)
+        if (!ref) {
+            continue
+        }
+
+        const position = Number.parseInt(ref.slice(1), 10)
+        if (!Number.isInteger(position)) {
+            continue
+        }
+
+        entries.push({ position, message })
+    }
+
+    if (entries.length === 0) {
+        return null
+    }
+
+    entries.sort((left, right) => left.position - right.position)
+
+    let runStart = 0
+    let runEnd = 0
+    let runCount = 0
+    let runTokens = 0
+    let previous = Number.NaN
+
+    const qualifies = (): boolean => runCount >= minMessages || runTokens >= minTokens
+
+    for (const entry of entries) {
+        if (runCount === 0 || entry.position !== previous + 1) {
+            if (runCount > 0 && qualifies()) {
+                return buildSpan(runStart, runEnd, runCount, runTokens)
+            }
+            runStart = entry.position
+            runCount = 0
+            runTokens = 0
+        }
+
+        runEnd = entry.position
+        runCount++
+        runTokens += countAllMessageTokens(entry.message)
+        previous = entry.position
+    }
+
+    if (runCount > 0 && qualifies()) {
+        return buildSpan(runStart, runEnd, runCount, runTokens)
+    }
+
+    return null
+}

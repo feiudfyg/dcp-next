@@ -41,7 +41,7 @@ function getTriggerPrompt(
     const base = COMPRESS_TRIGGER_PROMPT
     const guidance =
         config.compress.mode === "message"
-            ? buildCompressionTokenGuidance(state)
+            ? buildCompressionTokenGuidance(state, messages)
             : buildCompressedBlockGuidance(state, config.compress.allowPriorSummaryDrop, messages)
 
     const sections = [base, guidance]

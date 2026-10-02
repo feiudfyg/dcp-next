@@ -1,5 +1,6 @@
 import type { SessionState, WithParts } from "../../state"
 import { formatSignedTokenAmount, formatTokenAmount } from "../../token-format"
+import { findOldestUncompressedSpan } from "../../token-utils"
 
 interface ActiveBlockTokens {
     refs: string[]
@@ -34,20 +35,29 @@ function collectActiveBlockTokens(state: SessionState): ActiveBlockTokens {
     return { refs, removedTokens, summaryTokens }
 }
 
-export function buildCompressionTokenGuidance(state: SessionState): string {
+export function buildCompressionTokenGuidance(state: SessionState, messages?: WithParts[]): string {
     const { refs, removedTokens, summaryTokens } = collectActiveBlockTokens(state)
     if (refs.length === 0) {
         return "Compression token context:\n- No active compressed blocks yet."
     }
 
     const netTokens = removedTokens - summaryTokens
-    return [
+    const lines = [
         "Compression token context:",
         `- Active compressed blocks: ${refs.length} (${refs.join(", ")})`,
         `- Tokens removed by active compressions: ~${formatTokenAmount(removedTokens)}`,
         `- Summary tokens currently occupying context: ~${formatTokenAmount(summaryTokens)}`,
         `- Net context saved: ${formatSignedTokenAmount(netTokens)} tokens`,
-    ].join("\n")
+    ]
+
+    const backlog = messages ? findOldestUncompressedSpan(state, messages) : null
+    if (backlog) {
+        lines.push(
+            `- Uncompressed backlog: ${backlog.messageCount} messages (~${formatTokenAmount(backlog.tokens)} tokens), oldest span ${backlog.startRef}..${backlog.endRef}. Compress the oldest part first.`,
+        )
+    }
+
+    return lines.join("\n")
 }
 
 export function buildCompressedBlockGuidance(
@@ -77,6 +87,13 @@ export function buildCompressedBlockGuidance(
     const oldestUncompressed = listOldestUncompressedRefs(state, messages)
     if (oldestUncompressed.length > 0) {
         lines.push(`- Oldest uncompressed messages to consider: ${oldestUncompressed.join(", ")}.`)
+    }
+
+    const backlog = messages ? findOldestUncompressedSpan(state, messages) : null
+    if (backlog && blockCount > 0) {
+        lines.push(
+            `- Uncompressed backlog: ${backlog.messageCount} messages (~${formatTokenAmount(backlog.tokens)} tokens), oldest span ${backlog.startRef}..${backlog.endRef}. Compress the oldest part first.`,
+        )
     }
 
     return lines.join("\n")
