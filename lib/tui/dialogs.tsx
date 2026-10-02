@@ -11,7 +11,7 @@ import type { PluginConfig } from "../config"
 import type { SessionState, WithParts } from "../state"
 import { getActiveSummaryTokenUsage } from "../state/utils"
 import { findOldestUncompressedSpan, getCurrentTokenUsage } from "../token-utils"
-import { formatTokenCount, truncate } from "../ui/utils"
+import { formatTokenCount } from "../ui/utils"
 import { TextAttributes } from "@opentui/core"
 import { buildContextMap, type ContextMapEntry } from "./context-map"
 import { formatDuration, formatRatio } from "./format"
@@ -32,7 +32,9 @@ export function StatusDialog(props: {
     return (
         <DcpFrame api={props.api} title={props.title} eyebrow={props.eyebrow} onBack={props.onBack}>
             <box paddingTop={1} paddingBottom={1}>
-                <text fg={props.api.theme.current.textMuted}>{props.message}</text>
+                <text fg={props.api.theme.current.textMuted} wrapMode="word">
+                    {props.message}
+                </text>
             </box>
         </DcpFrame>
     )
@@ -50,7 +52,9 @@ export function HelpDialog(props: {
         <DcpFrame api={props.api} title="Help" eyebrow="DCP" onBack={props.onBack}>
             <Card theme={theme} title="Commands">
                 <scrollbox height={14} scrollY={true}>
-                    <text fg={theme.text}>{message}</text>
+                    <text fg={theme.text} wrapMode="word">
+                        {message}
+                    </text>
                 </scrollbox>
             </Card>
         </DcpFrame>
@@ -138,12 +142,16 @@ export function ContextDialog(props: {
     return (
         <DcpFrame api={props.api} title="Context" eyebrow="DCP" onBack={props.onBack}>
             {isWide(props.api) ? (
-                <box flexDirection="row" gap={2}>
-                    <box flexGrow={1}>{currentCard}</box>
-                    <box flexGrow={1}>{breakdownCard}</box>
+                <box flexDirection="row" gap={2} width="100%">
+                    <box flexGrow={1} flexShrink={1}>
+                        {currentCard}
+                    </box>
+                    <box flexGrow={1} flexShrink={1}>
+                        {breakdownCard}
+                    </box>
                 </box>
             ) : (
-                <box flexDirection="column" gap={1}>
+                <box flexDirection="column" gap={1} width="100%">
                     {currentCard}
                     {breakdownCard}
                 </box>
@@ -213,12 +221,16 @@ export function StatsDialog(props: { api: TuiApi; report: StatsReport; onBack: (
     return (
         <DcpFrame api={props.api} title="Stats" eyebrow="DCP" onBack={props.onBack}>
             {isWide(props.api) ? (
-                <box flexDirection="row" gap={2}>
-                    <box flexGrow={1}>{sessionCard}</box>
-                    <box flexGrow={1}>{allTimeCard}</box>
+                <box flexDirection="row" gap={2} width="100%">
+                    <box flexGrow={1} flexShrink={1}>
+                        {sessionCard}
+                    </box>
+                    <box flexGrow={1} flexShrink={1}>
+                        {allTimeCard}
+                    </box>
                 </box>
             ) : (
-                <box flexDirection="column" gap={1}>
+                <box flexDirection="column" gap={1} width="100%">
                     {sessionCard}
                     {allTimeCard}
                 </box>
@@ -259,30 +271,34 @@ function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
         const range =
             entry.startRef === entry.endRef ? entry.startRef : `${entry.startRef}..${entry.endRef}`
         return (
-            <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1}>
-                <box width={3}>
+            <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1} width="100%">
+                <box width={2} flexShrink={0}>
                     <text fg={props.theme.accent} attributes={TextAttributes.BOLD}>
                         {"▣"}
                     </text>
                 </box>
-                <box width={6}>
-                    <text fg={props.theme.primary} attributes={TextAttributes.BOLD}>
+                <box width={6} flexShrink={0}>
+                    <text fg={props.theme.primary} attributes={TextAttributes.BOLD} truncate>
                         {`b${entry.blockId}`}
                     </text>
                 </box>
-                <box width={7}>
-                    <text fg={props.theme.textMuted}>{`${entry.messageCount} msg`}</text>
+                <box width={6} flexShrink={0}>
+                    <text fg={props.theme.textMuted} truncate>{`${entry.messageCount} msg`}</text>
                 </box>
-                <box width={19}>
-                    <text fg={props.theme.textMuted}>{range}</text>
+                <box width={12} flexShrink={0}>
+                    <text fg={props.theme.textMuted} truncate>
+                        {range}
+                    </text>
                 </box>
-                <box width={14}>
-                    <text
-                        fg={props.theme.textMuted}
-                    >{`~${formatTokenCount(entry.compressedTokens, true)}→${formatTokenCount(entry.summaryTokens, true)}`}</text>
+                <box width={11} flexShrink={0}>
+                    <text fg={props.theme.textMuted} truncate>
+                        {`~${formatTokenCount(entry.compressedTokens, true)}→${formatTokenCount(entry.summaryTokens, true)}`}
+                    </text>
                 </box>
-                <box flexGrow={1}>
-                    <text fg={props.theme.text}>{truncate(topic, 40)}</text>
+                <box flexGrow={1} flexShrink={1}>
+                    <text fg={props.theme.text} truncate>
+                        {topic}
+                    </text>
                 </box>
             </box>
         )
@@ -290,26 +306,29 @@ function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
 
     const role = entry.role === "user" ? "user" : "asst"
     return (
-        <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1}>
-            <box width={3}>
+        <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1} width="100%">
+            <box width={2} flexShrink={0}>
                 <text fg={props.theme.textMuted}>{"·"}</text>
             </box>
-            <box width={6}>
-                <text fg={props.theme.textMuted}>{entry.ref}</text>
+            <box width={6} flexShrink={0}>
+                <text fg={props.theme.textMuted} truncate>
+                    {entry.ref}
+                </text>
             </box>
-            <box width={7}>
-                <text fg={entry.role === "user" ? props.theme.info : props.theme.textMuted}>
+            <box width={6} flexShrink={0}>
+                <text
+                    fg={entry.role === "user" ? props.theme.info : props.theme.textMuted}
+                    truncate
+                >
                     {role}
                 </text>
             </box>
-            <box width={19}>
-                <text fg={props.theme.textMuted}>{""}</text>
-            </box>
-            <box width={14}>
-                <text fg={props.theme.textMuted}>{""}</text>
-            </box>
-            <box flexGrow={1}>
-                <text fg={props.theme.textMuted}>{entry.preview}</text>
+            <box width={12} flexShrink={0} />
+            <box width={11} flexShrink={0} />
+            <box flexGrow={1} flexShrink={1}>
+                <text fg={props.theme.textMuted} truncate>
+                    {entry.preview}
+                </text>
             </box>
         </box>
     )
@@ -346,11 +365,11 @@ export function PanelDialog(props: {
     const currentTokens = getCurrentTokenUsage(props.state, props.messages)
 
     const summaryBlock = (
-        <box flexDirection="column">
-            <text fg={theme.text}>
+        <box flexDirection="column" width="100%">
+            <text fg={theme.text} wrapMode="word">
                 {`Blocks ${targets.length}  ·  Removed ~${formatTokenCount(removedTokens, true)}  ·  Summaries ~${formatTokenCount(summaryTokens, true)}  ·  Net ${netSaved >= 0 ? "-" : "+"}${formatTokenCount(Math.abs(netSaved), true)}`}
             </text>
-            <text fg={theme.textMuted}>
+            <text fg={theme.textMuted} wrapMode="word">
                 {`Context ~${formatTokenCount(currentTokens, true)}${backlog ? `  ·  Backlog ${backlog.startRef}..${backlog.endRef} (${backlog.messageCount} msgs, ~${formatTokenCount(backlog.tokens, true)})` : ""}`}
             </text>
         </box>
@@ -386,12 +405,12 @@ export function PanelDialog(props: {
     if (wide) {
         return (
             <DcpFrame api={props.api} eyebrow="DCP" title="Compression Panel">
-                <box flexDirection="row" gap={2} flexGrow={1}>
-                    <box flexDirection="column" gap={1} flexGrow={1}>
+                <box flexDirection="row" gap={2} flexGrow={1} width="100%">
+                    <box flexDirection="column" gap={1} flexGrow={1} flexShrink={1}>
                         {summaryBlock}
                         {blocksCard}
                     </box>
-                    <box flexDirection="column" gap={1} width={40}>
+                    <box flexDirection="column" gap={1} width={36} flexShrink={0}>
                         <Card theme={theme} title="Actions">
                             <box flexDirection="column" gap={0}>
                                 <ActionRow
@@ -515,23 +534,29 @@ function BlockRow(props: {
             gap={1}
             paddingLeft={1}
             paddingRight={1}
+            width="100%"
             onMouseUp={() => props.onSelect(target.displayId)}
         >
-            <box width={5}>
-                <text fg={props.theme.primary} attributes={TextAttributes.BOLD}>
+            <box width={5} flexShrink={0}>
+                <text fg={props.theme.primary} attributes={TextAttributes.BOLD} truncate>
                     {`b${target.displayId}`}
                 </text>
             </box>
-            <box width={8}>
+            <box width={8} flexShrink={0}>
                 <text
                     fg={props.theme.textMuted}
+                    truncate
                 >{`~${formatTokenCount(target.compressedTokens, true)}`}</text>
             </box>
-            <box width={9}>
-                <text fg={props.theme.textMuted}>{runLabel}</text>
+            <box width={9} flexShrink={0}>
+                <text fg={props.theme.textMuted} truncate>
+                    {runLabel}
+                </text>
             </box>
-            <box flexGrow={1}>
-                <text fg={props.theme.text}>{truncate(topic, 48)}</text>
+            <box flexGrow={1} flexShrink={1}>
+                <text fg={props.theme.text} truncate>
+                    {topic}
+                </text>
             </box>
         </box>
     )

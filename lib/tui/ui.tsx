@@ -14,7 +14,7 @@ export function DcpFrame(props: {
 }) {
     const theme = props.api.theme.current
     return (
-        <box paddingLeft={2} paddingRight={2} paddingBottom={1} gap={1}>
+        <box width="100%" paddingLeft={2} paddingRight={2} paddingBottom={1} gap={1}>
             <box flexDirection="row" justifyContent="space-between">
                 <box flexDirection="column">
                     <text fg={theme.primary} attributes={TextAttributes.BOLD}>
@@ -79,6 +79,7 @@ export function Card(props: { theme: Theme; title: string; children: JSX.Element
     const accent = props.theme.primary
     return (
         <box
+            width="100%"
             flexDirection="column"
             paddingLeft={2}
             paddingRight={2}
@@ -89,7 +90,7 @@ export function Card(props: { theme: Theme; title: string; children: JSX.Element
             borderColor={accent}
             gap={1}
         >
-            <text fg={accent} attributes={TextAttributes.BOLD}>
+            <text fg={accent} attributes={TextAttributes.BOLD} truncate>
                 {props.title}
             </text>
             {props.children}
@@ -100,14 +101,20 @@ export function Card(props: { theme: Theme; title: string; children: JSX.Element
 export function Metric(props: { theme: Theme; label: string; value: string; hint?: string }) {
     return (
         <box flexDirection="row" gap={2}>
-            <box width={24}>
-                <text fg={props.theme.textMuted}>{props.label}</text>
+            <box width={20} flexShrink={0}>
+                <text fg={props.theme.textMuted} truncate>
+                    {props.label}
+                </text>
             </box>
-            <box flexDirection="row" gap={1} flexGrow={1}>
-                <text fg={props.theme.text} attributes={TextAttributes.BOLD}>
+            <box flexDirection="row" gap={1} flexGrow={1} flexShrink={1}>
+                <text fg={props.theme.text} attributes={TextAttributes.BOLD} truncate>
                     {props.value}
                 </text>
-                {props.hint ? <text fg={props.theme.textMuted}>{props.hint}</text> : null}
+                {props.hint ? (
+                    <text fg={props.theme.textMuted} truncate>
+                        {props.hint}
+                    </text>
+                ) : null}
             </box>
         </box>
     )
@@ -128,14 +135,18 @@ export function Progress(props: {
     return (
         <box flexDirection="column" gap={0}>
             <box flexDirection="row" gap={2}>
-                <box width={20}>
-                    <text fg={props.theme.text}>{props.label}</text>
+                <box width={16} flexShrink={0}>
+                    <text fg={props.theme.text} truncate>
+                        {props.label}
+                    </text>
                 </box>
-                <box flexDirection="row" gap={1} flexGrow={1}>
-                    <text fg={props.theme.text} attributes={TextAttributes.BOLD}>
+                <box flexDirection="row" gap={1} flexGrow={1} flexShrink={1}>
+                    <text fg={props.theme.text} attributes={TextAttributes.BOLD} truncate>
                         {pct(props.value, props.total)}
                     </text>
-                    <text fg={props.theme.textMuted}>{props.detail}</text>
+                    <text fg={props.theme.textMuted} truncate>
+                        {props.detail}
+                    </text>
                 </box>
             </box>
             <box flexDirection="row">
