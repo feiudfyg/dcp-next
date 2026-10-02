@@ -34,6 +34,27 @@ export function activeSessionID(api: TuiApi): string | undefined {
     return fallbackSessionID
 }
 
+function readNextCursor(response: any, payload: any): string | undefined {
+    const headers = response?.response?.headers ?? response?.headers
+    if (headers) {
+        if (typeof headers.get === "function") {
+            const value = headers.get("x-next-cursor")
+            if (typeof value === "string" && value.length > 0) {
+                return value
+            }
+        }
+        const direct = headers["x-next-cursor"] ?? headers["X-Next-Cursor"]
+        if (typeof direct === "string" && direct.length > 0) {
+            return direct
+        }
+    }
+    const fromPayload = payload?.cursor ?? response?.cursor
+    if (typeof fromPayload === "string" && fromPayload.length > 0) {
+        return fromPayload
+    }
+    return undefined
+}
+
 async function fetchFullMessages(api: TuiApi, sessionID: string): Promise<WithParts[]> {
     const client = api.client as unknown as {
         session: { messages: (options: unknown) => Promise<unknown> }
@@ -71,7 +92,7 @@ async function fetchFullMessages(api: TuiApi, sessionID: string): Promise<WithPa
             }
         }
 
-        const cursor = payload?.cursor ?? response?.cursor
+        const cursor = readNextCursor(response, payload)
         if (!cursor || cursor === before || added === 0) {
             break
         }
