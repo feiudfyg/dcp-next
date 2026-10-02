@@ -8,6 +8,7 @@
  */
 
 import type { Logger } from "../logger"
+import type { SdkClient } from "../sdk-types"
 import type { SessionState, WithParts } from "../state"
 import type { PluginConfig } from "../config"
 import { sendIgnoredMessage } from "../ui/notification"
@@ -53,7 +54,7 @@ function getTriggerPrompt(
 }
 
 export interface ManualCommandContext {
-    client: any
+    client: SdkClient
     state: SessionState
     config: PluginConfig
     logger: Logger

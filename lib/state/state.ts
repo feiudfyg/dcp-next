@@ -1,5 +1,6 @@
 import type { SessionState, ToolParameterEntry, WithParts } from "./types"
 import type { Logger } from "../logger"
+import type { SdkClient } from "../sdk-types"
 import { applyPendingCompressionDurations } from "../compress/timing"
 import { loadManualModeSetting, loadSessionState, saveSessionState } from "./persistence"
 import {
@@ -15,7 +16,7 @@ import {
 import { getLastUserMessage } from "../messages/query"
 
 export const checkSession = async (
-    client: any,
+    client: SdkClient,
     state: SessionState,
     logger: Logger,
     messages: WithParts[],
@@ -136,7 +137,7 @@ export function resetSessionState(state: SessionState): void {
 }
 
 export async function ensureSessionInitialized(
-    client: any,
+    client: SdkClient,
     state: SessionState,
     sessionId: string,
     logger: Logger,

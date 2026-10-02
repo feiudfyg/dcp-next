@@ -4,6 +4,7 @@
  */
 
 import type { Logger } from "../logger"
+import type { SdkClient } from "../sdk-types"
 import type { PluginConfig } from "../config"
 import type { SessionState, WithParts } from "../state"
 import { compressPermission } from "../compress-permission"
@@ -11,7 +12,7 @@ import { sendIgnoredMessage } from "../ui/notification"
 import { getCurrentParams } from "../token-utils"
 
 export interface HelpCommandContext {
-    client: any
+    client: SdkClient
     state: SessionState
     config: PluginConfig
     logger: Logger

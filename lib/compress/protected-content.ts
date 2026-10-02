@@ -1,4 +1,5 @@
 import type { SessionState } from "../state"
+import type { SdkClient } from "../sdk-types"
 import { isIgnoredUserMessage } from "../messages/query"
 import {
     getFilePathsFromParameters,
@@ -108,7 +109,7 @@ export function extractProtectedPromptInfo(text: string): string[] {
 }
 
 export async function appendProtectedTools(
-    client: any,
+    client: SdkClient,
     state: SessionState,
     allowSubAgents: boolean,
     summary: string,

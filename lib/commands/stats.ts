@@ -4,6 +4,7 @@
  */
 
 import type { Logger } from "../logger"
+import type { SdkClient } from "../sdk-types"
 import type { SessionState, WithParts } from "../state"
 import { sendIgnoredMessage } from "../ui/notification"
 import { formatTokenCount } from "../ui/utils"
@@ -13,7 +14,7 @@ import { formatDuration, formatRatio } from "../format"
 import { getActiveCompressionTargets } from "./compression-targets"
 
 export interface StatsCommandContext {
-    client: any
+    client: SdkClient
     state: SessionState
     logger: Logger
     sessionId: string

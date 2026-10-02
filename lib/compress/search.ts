@@ -4,8 +4,12 @@ import { isIgnoredUserMessage } from "../messages/query"
 import { filterMessages } from "../messages/shape"
 import { countAllMessageTokens } from "../token-utils"
 import type { BoundaryReference, SearchContext, SelectionResolution } from "./types"
+import type { SdkClient } from "../sdk-types"
 
-export async function fetchSessionMessages(client: any, sessionId: string): Promise<WithParts[]> {
+export async function fetchSessionMessages(
+    client: SdkClient,
+    sessionId: string,
+): Promise<WithParts[]> {
     const response = await client.session.messages({
         path: { id: sessionId },
     })

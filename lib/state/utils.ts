@@ -8,6 +8,7 @@ import type {
 import { isIgnoredUserMessage, messageHasCompress } from "../messages/query"
 import { isMessageWithInfo } from "../messages/shape"
 import { countTokens } from "../token-utils"
+import type { SdkClient } from "../sdk-types"
 
 export const isMessageCompacted = (state: SessionState, msg: WithParts): boolean => {
     if (!isMessageWithInfo(msg)) {
@@ -71,7 +72,7 @@ export function serializePruneMessagesState(
     }
 }
 
-export async function isSubAgentSession(client: any, sessionID: string): Promise<boolean> {
+export async function isSubAgentSession(client: SdkClient, sessionID: string): Promise<boolean> {
     try {
         const result = await client.session.get({ path: { id: sessionID } })
         return !!result.data?.parentID

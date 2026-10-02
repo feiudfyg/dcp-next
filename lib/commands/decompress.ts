@@ -1,4 +1,5 @@
 import type { Logger } from "../logger"
+import type { SdkClient } from "../sdk-types"
 import type { CompressionBlock, PruneMessagesState, SessionState, WithParts } from "../state"
 import { subtractPrunedTokens } from "../state/utils"
 import { syncCompressionBlocks } from "../messages"
@@ -14,7 +15,7 @@ import {
 } from "./compression-targets"
 
 export interface DecompressCommandContext {
-    client: any
+    client: SdkClient
     state: SessionState
     logger: Logger
     sessionId: string

@@ -37,6 +37,7 @@ import {
 import { type HostPermissionSnapshot } from "./host-permissions"
 import { compressPermission, syncCompressPermissionState } from "./compress-permission"
 import { checkSession, ensureSessionInitialized, saveSessionState, syncToolCache } from "./state"
+import type { SdkClient } from "./sdk-types"
 import { cacheSystemPromptTokens } from "./ui/utils"
 
 const INTERNAL_AGENT_SIGNATURES = [
@@ -105,7 +106,7 @@ export function createSystemPromptHandler(
 }
 
 export function createChatMessageTransformHandler(
-    client: any,
+    client: SdkClient,
     state: SessionState,
     logger: Logger,
     config: PluginConfig,
@@ -168,7 +169,7 @@ export function createChatMessageTransformHandler(
 }
 
 export function createCommandExecuteHandler(
-    client: any,
+    client: SdkClient,
     state: SessionState,
     logger: Logger,
     config: PluginConfig,

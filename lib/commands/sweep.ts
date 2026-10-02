@@ -8,6 +8,7 @@
  */
 
 import type { Logger } from "../logger"
+import type { SdkClient } from "../sdk-types"
 import type { SessionState, WithParts, ToolParameterEntry } from "../state"
 import { addPrunedTokens } from "../state/utils"
 import type { PluginConfig } from "../config"
@@ -26,7 +27,7 @@ import {
 import { syncToolCache } from "../state/tool-cache"
 
 export interface SweepCommandContext {
-    client: any
+    client: SdkClient
     state: SessionState
     config: PluginConfig
     logger: Logger

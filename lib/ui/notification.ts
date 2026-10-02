@@ -1,5 +1,6 @@
 import type { Logger } from "../logger"
 import type { SessionState } from "../state"
+import type { SdkClient } from "../sdk-types"
 import { formatProgressBar, formatTokenCount } from "./utils"
 import { PluginConfig } from "../config"
 import { getActiveSummaryTokenUsage } from "../state/utils"
@@ -66,7 +67,7 @@ function formatCompressionMetrics(removedTokens: number, summaryTokens: number):
 }
 
 export async function sendCompressNotification(
-    client: any,
+    client: SdkClient,
     logger: Logger,
     config: PluginConfig,
     state: SessionState,
@@ -202,7 +203,7 @@ export async function sendCompressNotification(
 }
 
 export async function sendIgnoredMessage(
-    client: any,
+    client: SdkClient,
     sessionID: string,
     text: string,
     params: any,
@@ -219,23 +220,25 @@ export async function sendIgnoredMessage(
             : undefined
 
     try {
+        const body = {
+            noReply: true,
+            agent: agent,
+            model: model,
+            variant: variant,
+            parts: [
+                {
+                    type: "text",
+                    text: text,
+                    ignored: true,
+                },
+            ],
+        } as Parameters<SdkClient["session"]["prompt"]>[0]["body"]
+
         await client.session.prompt({
             path: {
                 id: sessionID,
             },
-            body: {
-                noReply: true,
-                agent: agent,
-                model: model,
-                variant: variant,
-                parts: [
-                    {
-                        type: "text",
-                        text: text,
-                        ignored: true,
-                    },
-                ],
-            },
+            body,
         })
     } catch (error: any) {
         logger.error("Failed to send notification", { error: error.message })

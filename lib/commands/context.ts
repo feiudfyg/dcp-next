@@ -54,9 +54,10 @@ import {
     sumAssistantTokens,
 } from "../token-utils"
 import type { AssistantMessage, TextPart, ToolPart } from "@opencode-ai/sdk/v2"
+import type { SdkClient } from "../sdk-types"
 
 export interface ContextCommandContext {
-    client: any
+    client: SdkClient
     state: SessionState
     logger: Logger
     sessionId: string
