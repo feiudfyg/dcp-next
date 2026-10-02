@@ -8,7 +8,7 @@ import { findOldestUncompressedSpan, getCurrentTokenUsage } from "../token-utils
 import { formatTokenCount } from "../ui/utils"
 import { TextAttributes } from "@opentui/core"
 import { formatDuration, formatRatio } from "./format"
-import { ActionRow, Card, DcpFrame, Metric, Progress, PromptRow, StatusPill } from "./ui"
+import { ActionRow, Card, DcpFrame, Metric, Progress, StatusPill } from "./ui"
 import type { StatsReport, TuiApi } from "./types"
 
 export function StatusDialog(props: {
@@ -163,6 +163,11 @@ export function PanelDialog(props: {
     onContext: () => void
     onStats: () => void
     onManual: (enabled: boolean) => void
+    onSweep: () => void
+    onDecompress: () => void
+    onRecompress: () => void
+    onCompress: () => void
+    onHelp: () => void
 }) {
     const theme = props.api.theme.current
     const canCompress = compressPermission(props.state, props.config) !== "deny"
@@ -236,17 +241,45 @@ export function PanelDialog(props: {
                     hint="tokens"
                 />
             </Card>
-            <Card theme={theme} title="Prompt">
-                {canCompress ? (
-                    <PromptRow
+            <Card theme={theme} title="Actions">
+                <box flexDirection="column" gap={1}>
+                    <ActionRow
                         theme={theme}
-                        command="/dcp-compress [focus]"
-                        description="Ask the model to compress"
-                        accent="primary"
+                        title="Sweep"
+                        detail="Prune tools since the last user message"
+                        onClick={props.onSweep}
                     />
-                ) : (
-                    <text fg={theme.textMuted}>Compression is denied by permissions.</text>
-                )}
+                    {canCompress ? (
+                        <ActionRow
+                            theme={theme}
+                            title="Decompress"
+                            detail="Restore a compression"
+                            onClick={props.onDecompress}
+                        />
+                    ) : null}
+                    {canCompress ? (
+                        <ActionRow
+                            theme={theme}
+                            title="Recompress"
+                            detail="Re-apply a restored compression"
+                            onClick={props.onRecompress}
+                        />
+                    ) : null}
+                    {canCompress ? (
+                        <ActionRow
+                            theme={theme}
+                            title="Compress"
+                            detail="Ask the model to compress now"
+                            onClick={props.onCompress}
+                        />
+                    ) : null}
+                    <ActionRow
+                        theme={theme}
+                        title="Help"
+                        detail="Show DCP commands"
+                        onClick={props.onHelp}
+                    />
+                </box>
             </Card>
             <Card theme={theme} title="Session State">
                 <ManualModeToggle api={props.api} state={props.state} onToggle={props.onManual} />

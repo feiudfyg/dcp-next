@@ -20,31 +20,16 @@ export interface HelpCommandContext {
     messages: WithParts[]
 }
 
-const TUI_COMMANDS: [string, string][] = [
-    ["/dcp-panel", "Open the DCP panel (context, stats, manual mode)"],
-]
-
-const TOOL_COMMANDS: Record<string, [string, string]> = {
-    compress: ["/dcp-compress [focus]", "Trigger manual compress tool execution"],
-    decompress: ["/dcp decompress <n>", "Restore selected compression"],
-    recompress: ["/dcp recompress <n>", "Re-apply a user-decompressed compression"],
-    stats: ["/dcp stats", "Show DCP pruning statistics"],
-    context: ["/dcp context", "Show token usage breakdown"],
-    sweep: ["/dcp sweep [n]", "Run manual context pruning"],
-    manual: ["/dcp manual [on|off]", "Toggle manual mode"],
-}
-
 function getVisibleCommands(state: SessionState, config: PluginConfig): [string, string][] {
-    const commands = [...TUI_COMMANDS]
-    commands.push(
-        TOOL_COMMANDS.context,
-        TOOL_COMMANDS.stats,
-        TOOL_COMMANDS.sweep,
-        TOOL_COMMANDS.manual,
-    )
+    const commands: [string, string][] = [
+        [
+            "/dcp-panel",
+            "Open the DCP panel: context, stats, sweep, decompress, recompress, manual mode",
+        ],
+    ]
 
     if (compressPermission(state, config) !== "deny") {
-        commands.push(TOOL_COMMANDS.compress, TOOL_COMMANDS.decompress, TOOL_COMMANDS.recompress)
+        commands.push(["/dcp-compress [focus]", "Ask the model to run the compress tool now"])
     }
 
     return commands
@@ -61,7 +46,7 @@ export function formatHelpMessage(state: SessionState, config: PluginConfig): st
     lines.push("")
     lines.push(`  ${"Manual mode:".padEnd(colWidth)}${state.manualMode ? "ON" : "OFF"}`)
     lines.push("")
-    lines.push("  Open the command palette for DCP modal commands.")
+    lines.push("  Open /dcp-panel for context, stats, sweep, decompress and recompress.")
     lines.push("  Use /dcp-compress [focus] when you want DCP to ask the model to run compression.")
     lines.push("")
     for (const [cmd, desc] of commands) {

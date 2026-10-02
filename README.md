@@ -188,11 +188,12 @@ Each level overrides the previous, so project settings take priority over global
 
 ### Commands
 
-DCP provides slash commands and a TUI panel:
+DCP exposes its controls through a TUI panel plus one optional slash command:
 
-- `/dcp-panel` — Opens the DCP panel with context, stats, and manual-mode controls.
-- `/dcp <subcommand>` — Run a DCP command: `context`, `stats`, `sweep`, `manual [on|off]`, `decompress <n>`, `recompress <n>`, or `help`.
+- `/dcp-panel` — Opens the DCP panel. From here you can view context and stats, toggle manual mode, and run **Sweep**, **Decompress**, **Recompress**, **Compress** and **Help** actions.
 - `/dcp-compress [focus]` — Asks the model to run one compression pass. Optional focus text directs what content to compress, following the active `compress.mode`.
+
+The informational subcommands (`context`, `stats`, `sweep`, `manual`, `decompress`, `recompress`, `help`) live in the panel instead of slash commands so they never trigger a model turn.
 
 ### Prompt Overrides
 

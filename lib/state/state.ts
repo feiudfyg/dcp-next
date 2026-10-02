@@ -2,7 +2,12 @@ import type { SessionState, ToolParameterEntry, WithParts } from "./types"
 import type { Logger } from "../logger"
 import type { SdkClient } from "../sdk-types"
 import { applyPendingCompressionDurations } from "../compress/timing"
-import { loadManualModeSetting, loadSessionState, saveSessionState } from "./persistence"
+import {
+    loadManualModeSetting,
+    loadSessionState,
+    reloadSessionStateIfChanged,
+    saveSessionState,
+} from "./persistence"
 import {
     isSubAgentSession,
     findLastCompactionTimestamp,
@@ -59,6 +64,8 @@ export const checkSession = async (
             })
         })
     }
+
+    await reloadSessionStateIfChanged(state, logger)
 
     state.currentTurn = countTurns(state, messages)
     await refreshManualMode(state, lastSessionId, logger, manualModeDefault)
@@ -186,6 +193,7 @@ export async function ensureSessionInitialized(
         pruneTokenCounter: persisted.stats?.pruneTokenCounter || 0,
         totalPruneTokens: persisted.stats?.totalPruneTokens || 0,
     }
+    state.persistedUpdatedAt = persisted.lastUpdated
 
     const applied = applyPendingCompressionDurations(state)
     if (applied > 0) {

@@ -10,7 +10,7 @@ import { homedir } from "os"
 import { join } from "path"
 import type { CompressionBlock, PrunedMessageEntry, SessionState, SessionStats } from "./types"
 import type { Logger } from "../logger"
-import { serializePruneMessagesState } from "./utils"
+import { loadPruneMap, loadPruneMessagesState, serializePruneMessagesState } from "./utils"
 
 /** Prune state as stored on disk */
 export interface PersistedPruneMessagesState {
@@ -104,6 +104,7 @@ export async function saveSessionState(
         }
 
         await writePersistedSessionState(sessionState.sessionId, state, logger)
+        sessionState.persistedUpdatedAt = state.lastUpdated
     } catch (error: any) {
         logger.error("Failed to save session state", {
             sessionId: sessionState.sessionId,
@@ -127,6 +128,52 @@ export function scheduleSaveSessionState(sessionState: SessionState, logger: Log
     }, SAVE_DEBOUNCE_MS)
     timer.unref()
     pendingSaveTimers.set(sessionId, timer)
+}
+
+export function cancelScheduledSave(sessionId: string): void {
+    const timer = pendingSaveTimers.get(sessionId)
+    if (!timer) {
+        return
+    }
+    clearTimeout(timer)
+    pendingSaveTimers.delete(sessionId)
+}
+
+export async function reloadSessionStateIfChanged(
+    sessionState: SessionState,
+    logger: Logger,
+): Promise<boolean> {
+    const sessionId = sessionState.sessionId
+    if (!sessionId) {
+        return false
+    }
+
+    const persisted = await loadSessionState(sessionId, logger)
+    if (!persisted || !persisted.lastUpdated) {
+        return false
+    }
+    if (persisted.lastUpdated === sessionState.persistedUpdatedAt) {
+        return false
+    }
+
+    cancelScheduledSave(sessionId)
+    sessionState.prune.tools = loadPruneMap(persisted.prune.tools)
+    sessionState.prune.messages = loadPruneMessagesState(persisted.prune.messages)
+    sessionState.nudges.contextLimitAnchors = new Set(persisted.nudges.contextLimitAnchors || [])
+    sessionState.nudges.turnNudgeAnchors = new Set(persisted.nudges.turnNudgeAnchors || [])
+    sessionState.nudges.iterationNudgeAnchors = new Set(
+        persisted.nudges.iterationNudgeAnchors || [],
+    )
+    sessionState.stats = {
+        pruneTokenCounter: persisted.stats?.pruneTokenCounter || 0,
+        totalPruneTokens: persisted.stats?.totalPruneTokens || 0,
+    }
+    if (typeof persisted.manualMode === "boolean") {
+        sessionState.manualMode = persisted.manualMode ? "active" : false
+    }
+    sessionState.persistedUpdatedAt = persisted.lastUpdated
+    logger.info("Reloaded session state modified outside this process", { sessionId })
+    return true
 }
 
 export async function loadSessionState(
@@ -208,7 +255,7 @@ export async function loadSessionState(
         }
         state.nudges.iterationNudgeAnchors = dedupedIterationAnchors
 
-        logger.info("Loaded session state from disk", {
+        logger.debug("Loaded session state from disk", {
             sessionId: sessionId,
         })
 
