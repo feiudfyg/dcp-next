@@ -4,7 +4,7 @@ import { buildStatsReport } from "../commands/stats"
 import type { PluginConfig } from "../config"
 import { saveManualModeSetting } from "../state/persistence"
 import { loadSessionData, logger } from "./data"
-import { ContextDialog, PanelDialog, StatsDialog, StatusDialog } from "./dialogs"
+import { ContextDialog, ContextMapDialog, PanelDialog, StatsDialog, StatusDialog } from "./dialogs"
 import {
     runCompress,
     runDecompress,
@@ -63,6 +63,24 @@ export function openStatsModal(api: TuiApi, config: PluginConfig) {
     })
 }
 
+export function openContextMapModal(api: TuiApi, config: PluginConfig) {
+    runModal(api, "Context map", async () => {
+        const data = await loadSessionData(api, config)
+        if (!data) {
+            showStatusDialog(api, "Context map", "No session", "Open a session first.")
+            return
+        }
+        showDialog(api, () => (
+            <ContextMapDialog
+                api={api}
+                state={data.state}
+                messages={data.messages}
+                onBack={() => openPanelModal(api, config)}
+            />
+        ))
+    })
+}
+
 export function openPanelModal(api: TuiApi, config: PluginConfig) {
     runModal(api, "DCP", async () => {
         const data = await loadSessionData(api, config)
@@ -77,6 +95,7 @@ export function openPanelModal(api: TuiApi, config: PluginConfig) {
                 messages={data.messages}
                 config={config}
                 onContext={() => openContextModal(api, config)}
+                onContextMap={() => openContextMapModal(api, config)}
                 onStats={() => openStatsModal(api, config)}
                 onManual={(enabled) => setManualMode(api, config, data.state.sessionId, enabled)}
                 onSweep={() => runSweep(api, config)}

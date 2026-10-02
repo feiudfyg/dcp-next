@@ -190,7 +190,8 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
     const toolOutputTokens = countTokens(toolOutputParts.join("\n"))
 
     breakdown.tools = toolInputTokens + toolOutputTokens
-    breakdown.assistant = countTokens(assistantTextParts.join("\n"))
+    const reasoningTokens = lastAssistant?.tokens?.reasoning || 0
+    breakdown.assistant = countTokens(assistantTextParts.join("\n")) + reasoningTokens
     breakdown.system = Math.max(
         0,
         breakdown.total - breakdown.user - breakdown.tools - breakdown.assistant,
