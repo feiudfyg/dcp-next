@@ -47,6 +47,21 @@ async function withSession(
 
 export function runSweep(api: TuiApi, config: PluginConfig) {
     void withSession(api, config, "Sweep", async (data) => {
+        showDialog(api, () =>
+            api.ui.DialogConfirm({
+                title: "Sweep",
+                message: "Prune tool messages since the last user message now?",
+                onConfirm: () => {
+                    void performSweep(api, config, data)
+                },
+                onCancel: () => openPanelModal(api, config),
+            }),
+        )
+    })
+}
+
+async function performSweep(api: TuiApi, config: PluginConfig, data: SessionData): Promise<void> {
+    try {
         const before = data.state.prune.tools.size
         await handleSweepCommand({
             ...actionContext(api, config, data),
@@ -59,7 +74,9 @@ export function runSweep(api: TuiApi, config: PluginConfig) {
                 ? `Pruned ${pruned} tool output${pruned === 1 ? "" : "s"} since the last user message.`
                 : "Nothing to prune since the last user message."
         showStatusDialog(api, "Sweep", "DCP", message, () => openPanelModal(api, config))
-    })
+    } catch (error) {
+        showError(api, "Sweep", error)
+    }
 }
 
 export function runHelp(api: TuiApi, config: PluginConfig) {
