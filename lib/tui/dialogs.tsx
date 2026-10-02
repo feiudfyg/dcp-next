@@ -15,8 +15,12 @@ import { formatTokenCount, truncate } from "../ui/utils"
 import { TextAttributes } from "@opentui/core"
 import { buildContextMap, type ContextMapEntry } from "./context-map"
 import { formatDuration, formatRatio } from "./format"
-import { ActionRow, Card, DcpFrame, Metric, Progress, StatusPill } from "./ui"
+import { ActionButton, ActionRow, Card, DcpFrame, Metric, Progress, StatusPill } from "./ui"
 import type { StatsReport, Theme, TuiApi } from "./types"
+
+function isWide(api: TuiApi): boolean {
+    return (api.renderer?.terminalWidth ?? 0) >= 128
+}
 
 export function StatusDialog(props: {
     api: TuiApi
@@ -72,72 +76,78 @@ export function ContextDialog(props: {
     )
     const activePruned = breakdown.prunedToolCount + breakdown.prunedMessageCount
 
+    const currentCard = (
+        <Card theme={theme} title="Current">
+            <Metric
+                theme={theme}
+                label="Total in context"
+                value={`~${formatTokenCount(total, true)}`}
+                hint="tokens"
+            />
+            <Metric
+                theme={theme}
+                label="Tools in context"
+                value={`${breakdown.toolsInContextCount}`}
+            />
+            <Metric theme={theme} label="Active pruned targets" value={`${activePruned}`} />
+            <Metric
+                theme={theme}
+                label="Tokens pruned"
+                value={`~${formatTokenCount(breakdown.prunedTokens, true)}`}
+                hint="tokens"
+            />
+        </Card>
+    )
+    const breakdownCard = (
+        <Card theme={theme} title="Breakdown">
+            <Progress
+                theme={theme}
+                label="System"
+                value={breakdown.system}
+                total={scale}
+                color="primary"
+                detail={`~${formatTokenCount(breakdown.system, true)} tokens`}
+            />
+            <Progress
+                theme={theme}
+                label="Assistant"
+                value={breakdown.assistant}
+                total={scale}
+                color="primary"
+                detail={`~${formatTokenCount(breakdown.assistant, true)} tokens`}
+            />
+            <Progress
+                theme={theme}
+                label="User"
+                value={breakdown.user}
+                total={scale}
+                color="primary"
+                detail={`~${formatTokenCount(breakdown.user, true)} tokens`}
+            />
+            <Progress
+                theme={theme}
+                label={`Tools (${breakdown.toolsInContextCount})`}
+                value={breakdown.tools}
+                total={scale}
+                color="primary"
+                detail={`~${formatTokenCount(breakdown.tools, true)} tokens`}
+            />
+        </Card>
+    )
+
     return (
         <DcpFrame api={props.api} title="Context" eyebrow="DCP" onBack={props.onBack}>
-            <box flexDirection="row" gap={2} flexWrap="wrap">
-                <box flexGrow={1} flexBasis={40}>
-                    <Card theme={theme} title="Current">
-                        <Metric
-                            theme={theme}
-                            label="Total in context"
-                            value={`~${formatTokenCount(total, true)}`}
-                            hint="tokens"
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Tools in context"
-                            value={`${breakdown.toolsInContextCount}`}
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Active pruned targets"
-                            value={`${activePruned}`}
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Tokens pruned"
-                            value={`~${formatTokenCount(breakdown.prunedTokens, true)}`}
-                            hint="tokens"
-                        />
-                    </Card>
+            {isWide(props.api) ? (
+                <box flexDirection="row" gap={2}>
+                    <box flexGrow={1}>{currentCard}</box>
+                    <box flexGrow={1}>{breakdownCard}</box>
                 </box>
-                <box flexGrow={1} flexBasis={40}>
-                    <Card theme={theme} title="Breakdown">
-                        <Progress
-                            theme={theme}
-                            label="System"
-                            value={breakdown.system}
-                            total={scale}
-                            color="primary"
-                            detail={`~${formatTokenCount(breakdown.system, true)} tokens`}
-                        />
-                        <Progress
-                            theme={theme}
-                            label="Assistant"
-                            value={breakdown.assistant}
-                            total={scale}
-                            color="primary"
-                            detail={`~${formatTokenCount(breakdown.assistant, true)} tokens`}
-                        />
-                        <Progress
-                            theme={theme}
-                            label="User"
-                            value={breakdown.user}
-                            total={scale}
-                            color="primary"
-                            detail={`~${formatTokenCount(breakdown.user, true)} tokens`}
-                        />
-                        <Progress
-                            theme={theme}
-                            label={`Tools (${breakdown.toolsInContextCount})`}
-                            value={breakdown.tools}
-                            total={scale}
-                            color="primary"
-                            detail={`~${formatTokenCount(breakdown.tools, true)} tokens`}
-                        />
-                    </Card>
+            ) : (
+                <box flexDirection="column" gap={1}>
+                    {currentCard}
+                    {breakdownCard}
                 </box>
-            </box>
+            )}
         </DcpFrame>
     )
 }
@@ -145,67 +155,74 @@ export function ContextDialog(props: {
 export function StatsDialog(props: { api: TuiApi; report: StatsReport; onBack: () => void }) {
     const theme = props.api.theme.current
     const ratio = formatRatio(props.report.sessionTokens, props.report.sessionSummaryTokens)
+
+    const sessionCard = (
+        <Card theme={theme} title="Session">
+            <Metric
+                theme={theme}
+                label="Tokens saved"
+                value={`~${formatTokenCount(props.report.sessionTokens, true)}`}
+                hint="tokens"
+            />
+            <Metric
+                theme={theme}
+                label="Summary size"
+                value={`~${formatTokenCount(props.report.sessionSummaryTokens, true)}`}
+                hint="tokens"
+            />
+            <Metric theme={theme} label="Compression ratio" value={ratio} />
+            <Metric
+                theme={theme}
+                label="Compression time"
+                value={formatDuration(props.report.sessionDurationMs)}
+            />
+            <Metric theme={theme} label="Tools pruned" value={`${props.report.sessionTools}`} />
+            <Metric
+                theme={theme}
+                label="Messages pruned"
+                value={`${props.report.sessionMessages}`}
+            />
+        </Card>
+    )
+    const allTimeCard = (
+        <Card theme={theme} title="All time">
+            <Metric
+                theme={theme}
+                label="Tokens saved"
+                value={`~${formatTokenCount(props.report.allTime.totalTokens, true)}`}
+                hint="tokens"
+            />
+            <Metric
+                theme={theme}
+                label="Tools pruned"
+                value={`${props.report.allTime.totalTools}`}
+            />
+            <Metric
+                theme={theme}
+                label="Messages pruned"
+                value={`${props.report.allTime.totalMessages}`}
+            />
+            <Metric
+                theme={theme}
+                label="Sessions with DCP history"
+                value={`${props.report.allTime.sessionCount}`}
+            />
+        </Card>
+    )
+
     return (
         <DcpFrame api={props.api} title="Stats" eyebrow="DCP" onBack={props.onBack}>
-            <box flexDirection="row" gap={2} flexWrap="wrap">
-                <box flexGrow={1} flexBasis={40}>
-                    <Card theme={theme} title="Session">
-                        <Metric
-                            theme={theme}
-                            label="Tokens saved"
-                            value={`~${formatTokenCount(props.report.sessionTokens, true)}`}
-                            hint="tokens"
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Summary size"
-                            value={`~${formatTokenCount(props.report.sessionSummaryTokens, true)}`}
-                            hint="tokens"
-                        />
-                        <Metric theme={theme} label="Compression ratio" value={ratio} />
-                        <Metric
-                            theme={theme}
-                            label="Compression time"
-                            value={formatDuration(props.report.sessionDurationMs)}
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Tools pruned"
-                            value={`${props.report.sessionTools}`}
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Messages pruned"
-                            value={`${props.report.sessionMessages}`}
-                        />
-                    </Card>
+            {isWide(props.api) ? (
+                <box flexDirection="row" gap={2}>
+                    <box flexGrow={1}>{sessionCard}</box>
+                    <box flexGrow={1}>{allTimeCard}</box>
                 </box>
-                <box flexGrow={1} flexBasis={40}>
-                    <Card theme={theme} title="All time">
-                        <Metric
-                            theme={theme}
-                            label="Tokens saved"
-                            value={`~${formatTokenCount(props.report.allTime.totalTokens, true)}`}
-                            hint="tokens"
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Tools pruned"
-                            value={`${props.report.allTime.totalTools}`}
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Messages pruned"
-                            value={`${props.report.allTime.totalMessages}`}
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Sessions with DCP history"
-                            value={`${props.report.allTime.sessionCount}`}
-                        />
-                    </Card>
+            ) : (
+                <box flexDirection="column" gap={1}>
+                    {sessionCard}
+                    {allTimeCard}
                 </box>
-            </box>
+            )}
         </DcpFrame>
     )
 }
@@ -315,6 +332,7 @@ export function PanelDialog(props: {
     onHelp: () => void
 }) {
     const theme = props.api.theme.current
+    const wide = isWide(props.api)
     const canCompress = compressPermission(props.state, props.config) !== "deny"
     const manualEnabled = !!props.state.manualMode
     const targets = getActiveCompressionTargets(props.state.prune.messages)
@@ -327,143 +345,155 @@ export function PanelDialog(props: {
     const backlog = findOldestUncompressedSpan(props.state, props.messages)
     const currentTokens = getCurrentTokenUsage(props.state, props.messages)
 
+    const summaryBlock = (
+        <box flexDirection="column">
+            <text fg={theme.text}>
+                {`Blocks ${targets.length}  ·  Removed ~${formatTokenCount(removedTokens, true)}  ·  Summaries ~${formatTokenCount(summaryTokens, true)}  ·  Net ${netSaved >= 0 ? "-" : "+"}${formatTokenCount(Math.abs(netSaved), true)}`}
+            </text>
+            <text fg={theme.textMuted}>
+                {`Context ~${formatTokenCount(currentTokens, true)}${backlog ? `  ·  Backlog ${backlog.startRef}..${backlog.endRef} (${backlog.messageCount} msgs, ~${formatTokenCount(backlog.tokens, true)})` : ""}`}
+            </text>
+        </box>
+    )
+
+    const blocksCard = (
+        <Card theme={theme} title={`Active compressions (${targets.length}) - click to restore`}>
+            {targets.length === 0 ? (
+                <text fg={theme.textMuted}>No active compressions.</text>
+            ) : (
+                <scrollbox height={wide ? 14 : 10} scrollY={true}>
+                    {targets.map((target) => (
+                        <BlockRow
+                            theme={theme}
+                            target={target}
+                            onSelect={props.onDecompressBlock}
+                        />
+                    ))}
+                </scrollbox>
+            )}
+        </Card>
+    )
+
+    const manualButton = (
+        <ActionButton
+            theme={theme}
+            label={manualEnabled ? "Manual: on" : "Manual: off"}
+            variant={manualEnabled ? "primary" : "muted"}
+            onClick={() => props.onManual(!manualEnabled)}
+        />
+    )
+
+    if (wide) {
+        return (
+            <DcpFrame api={props.api} eyebrow="DCP" title="Compression Panel">
+                <box flexDirection="row" gap={2} flexGrow={1}>
+                    <box flexDirection="column" gap={1} flexGrow={1}>
+                        {summaryBlock}
+                        {blocksCard}
+                    </box>
+                    <box flexDirection="column" gap={1} width={40}>
+                        <Card theme={theme} title="Actions">
+                            <box flexDirection="column" gap={0}>
+                                <ActionRow
+                                    theme={theme}
+                                    title="Context"
+                                    detail="Tokens"
+                                    onClick={props.onContext}
+                                />
+                                <ActionRow
+                                    theme={theme}
+                                    title="Map"
+                                    detail="Timeline"
+                                    onClick={props.onContextMap}
+                                />
+                                <ActionRow
+                                    theme={theme}
+                                    title="Stats"
+                                    detail="Savings"
+                                    onClick={props.onStats}
+                                />
+                                <ActionRow
+                                    theme={theme}
+                                    title="Sweep"
+                                    detail="Prune"
+                                    onClick={props.onSweep}
+                                />
+                                {canCompress ? (
+                                    <ActionRow
+                                        theme={theme}
+                                        title="Decompress"
+                                        detail="Restore"
+                                        onClick={props.onDecompress}
+                                    />
+                                ) : null}
+                                {canCompress ? (
+                                    <ActionRow
+                                        theme={theme}
+                                        title="Recompress"
+                                        detail="Re-apply"
+                                        onClick={props.onRecompress}
+                                    />
+                                ) : null}
+                                {canCompress ? (
+                                    <ActionRow
+                                        theme={theme}
+                                        title="Compress"
+                                        detail="Now"
+                                        onClick={props.onCompress}
+                                    />
+                                ) : null}
+                                <ActionRow
+                                    theme={theme}
+                                    title="Help"
+                                    detail="Commands"
+                                    onClick={props.onHelp}
+                                />
+                            </box>
+                        </Card>
+                        <Card theme={theme} title="Session">
+                            <ManualModeToggle
+                                api={props.api}
+                                state={props.state}
+                                onToggle={props.onManual}
+                            />
+                            <StatusPill
+                                theme={theme}
+                                label="Compression"
+                                value={canCompress ? "enabled" : "disabled"}
+                                accent={canCompress ? "success" : "warning"}
+                            />
+                        </Card>
+                    </box>
+                </box>
+            </DcpFrame>
+        )
+    }
+
     return (
         <DcpFrame api={props.api} eyebrow="DCP" title="Compression Panel">
-            <box flexDirection="row" gap={2} flexGrow={1}>
-                <box flexDirection="column" gap={1} flexGrow={1}>
-                    <Card theme={theme} title="Summary">
-                        <Metric
-                            theme={theme}
-                            label="Active blocks"
-                            value={String(targets.length)}
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Removed (active)"
-                            value={`~${formatTokenCount(removedTokens, true)}`}
-                            hint="tokens"
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Summaries (active)"
-                            value={`~${formatTokenCount(summaryTokens, true)}`}
-                            hint="tokens"
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Net saved"
-                            value={`${netSaved >= 0 ? "-" : "+"}${formatTokenCount(Math.abs(netSaved), true)}`}
-                            hint="tokens"
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Current context"
-                            value={`~${formatTokenCount(currentTokens, true)}`}
-                            hint="tokens"
-                        />
-                        <Metric
-                            theme={theme}
-                            label="Uncompressed backlog"
-                            value={backlog ? `~${formatTokenCount(backlog.tokens, true)}` : "none"}
-                            hint={
-                                backlog
-                                    ? `${backlog.startRef}..${backlog.endRef} (${backlog.messageCount} msgs)`
-                                    : "tokens"
-                            }
-                        />
-                    </Card>
-                    <Card
+            {summaryBlock}
+            {blocksCard}
+            <box flexDirection="row" gap={1} flexWrap="wrap">
+                <ActionButton theme={theme} label="Context" onClick={props.onContext} />
+                <ActionButton theme={theme} label="Map" onClick={props.onContextMap} />
+                <ActionButton theme={theme} label="Stats" onClick={props.onStats} />
+                <ActionButton theme={theme} label="Sweep" onClick={props.onSweep} />
+                {canCompress ? (
+                    <ActionButton theme={theme} label="Decompress" onClick={props.onDecompress} />
+                ) : null}
+                {canCompress ? (
+                    <ActionButton theme={theme} label="Recompress" onClick={props.onRecompress} />
+                ) : null}
+                {canCompress ? (
+                    <ActionButton
                         theme={theme}
-                        title={`Active compressions (${targets.length}) - click to restore`}
-                    >
-                        {targets.length === 0 ? (
-                            <text fg={theme.textMuted}>No active compressions.</text>
-                        ) : (
-                            <scrollbox height={8} scrollY={true}>
-                                {targets.map((target) => (
-                                    <BlockRow
-                                        theme={theme}
-                                        target={target}
-                                        onSelect={props.onDecompressBlock}
-                                    />
-                                ))}
-                            </scrollbox>
-                        )}
-                    </Card>
-                </box>
-                <box flexDirection="column" gap={1} width={40}>
-                    <Card theme={theme} title="Actions">
-                        <box flexDirection="column" gap={0}>
-                            <ActionRow
-                                theme={theme}
-                                title="Context"
-                                detail="Tokens"
-                                onClick={props.onContext}
-                            />
-                            <ActionRow
-                                theme={theme}
-                                title="Map"
-                                detail="Timeline"
-                                onClick={props.onContextMap}
-                            />
-                            <ActionRow
-                                theme={theme}
-                                title="Stats"
-                                detail="Savings"
-                                onClick={props.onStats}
-                            />
-                            <ActionRow
-                                theme={theme}
-                                title="Sweep"
-                                detail="Prune tools"
-                                onClick={props.onSweep}
-                            />
-                            {canCompress ? (
-                                <ActionRow
-                                    theme={theme}
-                                    title="Decompress"
-                                    detail="Restore block"
-                                    onClick={props.onDecompress}
-                                />
-                            ) : null}
-                            {canCompress ? (
-                                <ActionRow
-                                    theme={theme}
-                                    title="Recompress"
-                                    detail="Re-apply block"
-                                    onClick={props.onRecompress}
-                                />
-                            ) : null}
-                            {canCompress ? (
-                                <ActionRow
-                                    theme={theme}
-                                    title="Compress"
-                                    detail="Compress now"
-                                    onClick={props.onCompress}
-                                />
-                            ) : null}
-                            <ActionRow
-                                theme={theme}
-                                title="Help"
-                                detail="Commands"
-                                onClick={props.onHelp}
-                            />
-                        </box>
-                    </Card>
-                    <Card theme={theme} title="Session">
-                        <ManualModeToggle
-                            api={props.api}
-                            state={props.state}
-                            onToggle={props.onManual}
-                        />
-                        <StatusPill
-                            theme={theme}
-                            label="Compression command"
-                            value={canCompress ? "enabled" : "disabled"}
-                            accent={canCompress ? "success" : "warning"}
-                        />
-                    </Card>
-                </box>
+                        label="Compress"
+                        variant="primary"
+                        onClick={props.onCompress}
+                    />
+                ) : null}
+                {manualButton}
+                <ActionButton theme={theme} label="Help" onClick={props.onHelp} />
             </box>
         </DcpFrame>
     )

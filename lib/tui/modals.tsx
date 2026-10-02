@@ -15,8 +15,15 @@ import {
 } from "./actions"
 import type { TuiApi } from "./types"
 
+function dialogSize(api: TuiApi): "medium" | "large" | "xlarge" {
+    const width = api.renderer?.terminalWidth ?? 0
+    if (width >= 128) return "xlarge"
+    if (width >= 96) return "large"
+    return "medium"
+}
+
 export function showDialog(api: TuiApi, render: () => any) {
-    api.ui.dialog.setSize("xlarge")
+    api.ui.dialog.setSize(dialogSize(api))
     api.ui.dialog.replace(render)
 }
 
