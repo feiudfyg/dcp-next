@@ -26,15 +26,24 @@ export function getCurrentTokenUsage(state: SessionState, messages: WithParts[])
             return 0
         }
 
-        const input = assistantInfo.tokens?.input || 0
-        const output = assistantInfo.tokens?.output || 0
-        const reasoning = assistantInfo.tokens?.reasoning || 0
-        const cacheRead = assistantInfo.tokens?.cache?.read || 0
-        const cacheWrite = assistantInfo.tokens?.cache?.write || 0
-        return input + output + reasoning + cacheRead + cacheWrite
+        return sumAssistantTokens(assistantInfo)
     }
 
     return 0
+}
+
+export function sumAssistantInputTokens(info: AssistantMessage): number {
+    return (
+        (info.tokens?.input || 0) +
+        (info.tokens?.cache?.read || 0) +
+        (info.tokens?.cache?.write || 0)
+    )
+}
+
+export function sumAssistantTokens(info: AssistantMessage): number {
+    return (
+        sumAssistantInputTokens(info) + (info.tokens?.output || 0) + (info.tokens?.reasoning || 0)
+    )
 }
 
 export function getCurrentParams(

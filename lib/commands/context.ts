@@ -46,7 +46,13 @@ import { sendIgnoredMessage } from "../ui/notification"
 import { formatTokenCount } from "../ui/utils"
 import { isIgnoredUserMessage } from "../messages/query"
 import { isMessageCompacted } from "../state/utils"
-import { countTokens, extractCompletedToolOutput, getCurrentParams } from "../token-utils"
+import {
+    countTokens,
+    extractCompletedToolOutput,
+    getCurrentParams,
+    sumAssistantInputTokens,
+    sumAssistantTokens,
+} from "../token-utils"
 import type { AssistantMessage, TextPart, ToolPart } from "@opencode-ai/sdk/v2"
 
 export interface ContextCommandContext {
@@ -111,12 +117,7 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
         }
     }
 
-    const apiInput = lastAssistant?.tokens?.input || 0
-    const apiOutput = lastAssistant?.tokens?.output || 0
-    const apiReasoning = lastAssistant?.tokens?.reasoning || 0
-    const apiCacheRead = lastAssistant?.tokens?.cache?.read || 0
-    const apiCacheWrite = lastAssistant?.tokens?.cache?.write || 0
-    breakdown.total = apiInput + apiOutput + apiReasoning + apiCacheRead + apiCacheWrite
+    breakdown.total = lastAssistant ? sumAssistantTokens(lastAssistant) : 0
 
     const userTextParts: string[] = []
     const toolInputParts: string[] = []
@@ -212,10 +213,7 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
     const toolOutputTokens = countTokens(toolOutputParts.join("\n"))
 
     if (firstAssistant) {
-        const firstInput =
-            (firstAssistant.tokens?.input || 0) +
-            (firstAssistant.tokens?.cache?.read || 0) +
-            (firstAssistant.tokens?.cache?.write || 0)
+        const firstInput = sumAssistantInputTokens(firstAssistant)
         breakdown.system = Math.max(0, firstInput - firstUserTokens)
     }
 

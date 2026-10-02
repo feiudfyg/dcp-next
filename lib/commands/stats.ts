@@ -9,6 +9,7 @@ import { sendIgnoredMessage } from "../ui/notification"
 import { formatTokenCount } from "../ui/utils"
 import { loadAllSessionStats, type AggregatedStats } from "../state/persistence"
 import { getCurrentParams } from "../token-utils"
+import { formatDuration, formatRatio } from "../format"
 import { getActiveCompressionTargets } from "./compression-targets"
 
 export interface StatsCommandContext {
@@ -38,8 +39,8 @@ export function formatStatsMessage(
     lines.push(
         `  Tokens in|out:    ~${formatTokenCount(sessionTokens)} | ~${formatTokenCount(sessionSummaryTokens)}`,
     )
-    lines.push(`  Ratio:            ${formatCompressionRatio(sessionTokens, sessionSummaryTokens)}`)
-    lines.push(`  Time:             ${formatCompressionTime(sessionDurationMs)}`)
+    lines.push(`  Ratio:            ${formatRatio(sessionTokens, sessionSummaryTokens)}`)
+    lines.push(`  Time:             ${formatDuration(sessionDurationMs)}`)
     lines.push(`  Messages:         ${sessionMessages}`)
     lines.push(`  Tools:            ${sessionTools}`)
     lines.push("")
@@ -51,42 +52,6 @@ export function formatStatsMessage(
     lines.push(`  Sessions:         ${allTime.sessionCount}`)
 
     return lines.join("\n")
-}
-
-function formatCompressionRatio(inputTokens: number, outputTokens: number): string {
-    if (inputTokens <= 0) {
-        return "0:1"
-    }
-
-    if (outputTokens <= 0) {
-        return "∞:1"
-    }
-
-    const ratio = Math.max(1, Math.round(inputTokens / outputTokens))
-    return `${ratio}:1`
-}
-
-function formatCompressionTime(ms: number): string {
-    const safeMs = Math.max(0, Math.round(ms))
-    if (safeMs < 1000) {
-        return `${safeMs} ms`
-    }
-
-    const totalSeconds = safeMs / 1000
-    if (totalSeconds < 60) {
-        return `${totalSeconds.toFixed(1)} s`
-    }
-
-    const wholeSeconds = Math.floor(totalSeconds)
-    const hours = Math.floor(wholeSeconds / 3600)
-    const minutes = Math.floor((wholeSeconds % 3600) / 60)
-    const seconds = wholeSeconds % 60
-
-    if (hours > 0) {
-        return `${hours}h ${minutes}m ${seconds}s`
-    }
-
-    return `${minutes}m ${seconds}s`
 }
 
 export async function handleStatsCommand(ctx: StatsCommandContext): Promise<void> {
