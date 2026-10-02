@@ -137,18 +137,6 @@ export function getTotalToolTokens(state: SessionState, toolIds: string[]): numb
     return total
 }
 
-export function countMessageTextTokens(msg: WithParts): number {
-    const texts: string[] = []
-    const parts = Array.isArray(msg.parts) ? msg.parts : []
-    for (const part of parts) {
-        if (part.type === "text") {
-            texts.push(part.text)
-        }
-    }
-    if (texts.length === 0) return 0
-    return estimateTokensBatch(texts)
-}
-
 export function countAllMessageTokens(msg: WithParts): number {
     const parts = Array.isArray(msg.parts) ? msg.parts : []
     const texts: string[] = []

@@ -137,11 +137,6 @@ function extractParameterKey(tool: string, parameters: any): string {
     return paramStr.substring(0, 50)
 }
 
-export function formatStatsHeader(totalTokensSaved: number, pruneTokenCounter: number): string {
-    const totalTokensSavedStr = `~${formatTokenCount(totalTokensSaved + pruneTokenCounter)}`
-    return [`▣ DCP | ${totalTokensSavedStr} saved total`].join("\n")
-}
-
 export function formatTokenCount(tokens: number, compact?: boolean): string {
     const suffix = compact ? "" : " tokens"
     if (tokens >= 1000) {
@@ -284,21 +279,4 @@ export function formatPrunedItemsList(
     }
 
     return lines
-}
-
-export function formatPruningResultForTool(
-    prunedIds: string[],
-    toolMetadata: Map<string, ToolParameterEntry>,
-    workingDirectory?: string,
-): string {
-    const lines: string[] = []
-    lines.push(`Context pruning complete. Pruned ${prunedIds.length} tool outputs.`)
-    lines.push("")
-
-    if (prunedIds.length > 0) {
-        lines.push(`Semantically pruned (${prunedIds.length}):`)
-        lines.push(...formatPrunedItemsList(prunedIds, toolMetadata, workingDirectory))
-    }
-
-    return lines.join("\n").trim()
 }
