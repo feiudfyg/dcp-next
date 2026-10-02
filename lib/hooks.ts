@@ -168,6 +168,8 @@ export function createChatMessageTransformHandler(
     }
 }
 
+const DCP_COMMAND_HANDLED = "__DCP_COMMAND_HANDLED__"
+
 export function createCommandExecuteHandler(
     client: SdkClient,
     state: SessionState,
@@ -203,7 +205,7 @@ export function createCommandExecuteHandler(
 
             const effectivePermission = compressPermission(state, config)
             if (effectivePermission === "deny") {
-                return
+                throw new Error(DCP_COMMAND_HANDLED)
             }
 
             output.parts.length = 0
@@ -224,12 +226,12 @@ export function createCommandExecuteHandler(
 
             if (subcommand === "context") {
                 await handleContextCommand(commandCtx)
-                return
+                throw new Error(DCP_COMMAND_HANDLED)
             }
 
             if (subcommand === "stats") {
                 await handleStatsCommand(commandCtx)
-                return
+                throw new Error(DCP_COMMAND_HANDLED)
             }
 
             if (subcommand === "sweep") {
@@ -238,12 +240,12 @@ export function createCommandExecuteHandler(
                     args: subArgs,
                     workingDirectory,
                 })
-                return
+                throw new Error(DCP_COMMAND_HANDLED)
             }
 
             if (subcommand === "manual") {
                 await handleManualToggleCommand(commandCtx, subArgs[0]?.toLowerCase())
-                return
+                throw new Error(DCP_COMMAND_HANDLED)
             }
 
             if (subcommand === "compress") {
@@ -278,7 +280,7 @@ export function createCommandExecuteHandler(
                     ...commandCtx,
                     args: subArgs,
                 })
-                return
+                throw new Error(DCP_COMMAND_HANDLED)
             }
 
             if (subcommand === "recompress") {
@@ -286,11 +288,11 @@ export function createCommandExecuteHandler(
                     ...commandCtx,
                     args: subArgs,
                 })
-                return
+                throw new Error(DCP_COMMAND_HANDLED)
             }
 
             await handleHelpCommand(commandCtx)
-            return
+            throw new Error(DCP_COMMAND_HANDLED)
         }
     }
 }

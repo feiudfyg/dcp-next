@@ -242,7 +242,7 @@ test("chat message transform drops messages without info instead of crashing", a
     assert.equal(output.messages.length, 0)
 })
 
-test("command execute exits after effective permission resolves to deny", async () => {
+test("command execute aborts the model turn when permission resolves to deny", async () => {
     let sessionMessagesCalls = 0
     const output = { parts: [] as any[] }
     const handler = createCommandExecuteHandler(
@@ -261,9 +261,42 @@ test("command execute exits after effective permission resolves to deny", async 
         { global: undefined, agents: {} },
     )
 
-    await handler({ command: "dcp", sessionID: "session-1", arguments: "context" }, output)
+    await assert.rejects(
+        () => handler({ command: "dcp", sessionID: "session-1", arguments: "context" }, output),
+        /__DCP_COMMAND_HANDLED__/,
+    )
 
     assert.equal(sessionMessagesCalls, 1)
+    assert.deepEqual(output.parts, [])
+})
+
+test("command execute aborts after handling an informational subcommand", async () => {
+    let promptCalls = 0
+    const output = { parts: [] as any[] }
+    const handler = createCommandExecuteHandler(
+        {
+            session: {
+                messages: async () => ({ data: [] }),
+                get: async () => ({ data: {} }),
+                prompt: async () => {
+                    promptCalls += 1
+                    return {}
+                },
+            },
+        } as any,
+        createSessionState(),
+        new Logger(false),
+        buildConfig("allow"),
+        "/tmp",
+        { global: undefined, agents: {} },
+    )
+
+    await assert.rejects(
+        () => handler({ command: "dcp", sessionID: "session-1", arguments: "help" }, output),
+        /__DCP_COMMAND_HANDLED__/,
+    )
+
+    assert.equal(promptCalls, 1)
     assert.deepEqual(output.parts, [])
 })
 
