@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { homedir } from "os"
 import { fileURLToPath } from "url"
 import type { Logger } from "../logger"
+import { findOpencodeDir } from "../opencode-dir"
 import { SYSTEM as SYSTEM_PROMPT } from "./system"
 import { COMPRESS_RANGE as COMPRESS_RANGE_PROMPT } from "./compress-range"
 import { COMPRESS_MESSAGE as COMPRESS_MESSAGE_PROMPT } from "./compress-message"
@@ -149,28 +150,6 @@ function createBundledRuntimePrompts(): RuntimePrompts {
         manualExtension: INTERNAL_PROMPT_EXTENSIONS.manualExtension,
         subagentExtension: INTERNAL_PROMPT_EXTENSIONS.subagentExtension,
     }
-}
-
-function findOpencodeDir(startDir: string): string | null {
-    let current = startDir
-    while (current !== "/") {
-        const candidate = join(current, ".opencode")
-        if (existsSync(candidate)) {
-            try {
-                if (statSync(candidate).isDirectory()) {
-                    return candidate
-                }
-            } catch {
-                // ignore inaccessible entries while walking upward
-            }
-        }
-        const parent = dirname(current)
-        if (parent === current) {
-            break
-        }
-        current = parent
-    }
-    return null
 }
 
 function resolvePromptPaths(workingDirectory: string): PromptPaths {

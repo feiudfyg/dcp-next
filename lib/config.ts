@@ -1,8 +1,9 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from "fs"
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { join, dirname } from "path"
 import { homedir } from "os"
-import { parse } from "jsonc-parser/lib/esm/main.js"
+import { parse, printParseErrorCode, type ParseError } from "jsonc-parser"
 import type { PluginInput } from "@opencode-ai/plugin"
+import { findOpencodeDir } from "./opencode-dir"
 
 type Permission = "ask" | "allow" | "deny"
 type CompressMode = "range" | "message"
@@ -757,22 +758,6 @@ const GLOBAL_CONFIG_DIR = process.env.XDG_CONFIG_HOME
 const GLOBAL_CONFIG_PATH_JSONC = join(GLOBAL_CONFIG_DIR, "dcp.jsonc")
 const GLOBAL_CONFIG_PATH_JSON = join(GLOBAL_CONFIG_DIR, "dcp.json")
 
-function findOpencodeDir(startDir: string): string | null {
-    let current = startDir
-    while (current !== "/") {
-        const candidate = join(current, ".opencode")
-        if (existsSync(candidate) && statSync(candidate).isDirectory()) {
-            return candidate
-        }
-        const parent = dirname(current)
-        if (parent === current) {
-            break
-        }
-        current = parent
-    }
-    return null
-}
-
 function getConfigPaths(ctx?: PluginInput): {
     global: string | null
     configDir: string | null
@@ -833,9 +818,36 @@ function createDefaultConfig(): void {
     writeFileSync(GLOBAL_CONFIG_PATH_JSONC, configContent, "utf-8")
 }
 
-interface ConfigLoadResult {
+export interface ConfigLoadResult {
     data: Record<string, any> | null
     parseError?: string
+}
+
+export function parseConfigContent(fileContent: string): ConfigLoadResult {
+    if (fileContent.trim().length === 0) {
+        return { data: null, parseError: "Config file is empty" }
+    }
+
+    const errors: ParseError[] = []
+    const parsed = parse(fileContent, errors, { allowTrailingComma: true })
+    if (errors.length > 0) {
+        const first = errors[0]
+        return {
+            data: null,
+            parseError: `Invalid JSON syntax: ${printParseErrorCode(first.error)} at offset ${first.offset}`,
+        }
+    }
+
+    if (
+        parsed === undefined ||
+        parsed === null ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed)
+    ) {
+        return { data: null, parseError: "Config file must contain a JSON object" }
+    }
+
+    return { data: parsed }
 }
 
 function loadConfigFile(configPath: string): ConfigLoadResult {
@@ -846,15 +858,7 @@ function loadConfigFile(configPath: string): ConfigLoadResult {
         return { data: null }
     }
 
-    try {
-        const parsed = parse(fileContent, undefined, { allowTrailingComma: true })
-        if (parsed === undefined || parsed === null) {
-            return { data: null, parseError: "Config file is empty or invalid" }
-        }
-        return { data: parsed }
-    } catch (error: any) {
-        return { data: null, parseError: error.message || "Failed to parse config" }
-    }
+    return parseConfigContent(fileContent)
 }
 
 function mergeStrategies(
