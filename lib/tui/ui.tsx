@@ -82,11 +82,12 @@ export function Card(props: { theme: Theme; title: string; children: JSX.Element
             flexDirection="column"
             paddingLeft={2}
             paddingRight={2}
+            paddingTop={1}
             paddingBottom={1}
             backgroundColor={props.theme.backgroundElement}
             border={["left"]}
             borderColor={accent}
-            gap={0}
+            gap={1}
         >
             <text fg={accent} attributes={TextAttributes.BOLD}>
                 {props.title}
@@ -121,8 +122,8 @@ export function Progress(props: {
     detail: string
 }) {
     const width = 32
-    const filled =
-        props.total > 0 ? Math.max(0, Math.round((props.value / props.total) * width)) : 0
+    const ratio = props.total > 0 ? props.value / props.total : 0
+    const filled = Math.min(width, Math.max(0, Math.round(ratio * width)))
     const empty = Math.max(0, width - filled)
     return (
         <box flexDirection="column" gap={0}>

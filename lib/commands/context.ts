@@ -222,6 +222,10 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
     }
 
     breakdown.tools = toolInputTokens + toolOutputTokens
+    breakdown.system = Math.min(
+        breakdown.system,
+        Math.max(0, breakdown.total - breakdown.user - breakdown.tools),
+    )
     breakdown.assistant = Math.max(
         0,
         breakdown.total - breakdown.system - breakdown.user - breakdown.tools,

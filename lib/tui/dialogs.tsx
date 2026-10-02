@@ -40,6 +40,14 @@ export function ContextDialog(props: {
     const theme = props.api.theme.current
     const breakdown = analyzeContextTokens(props.state, props.messages)
     const total = Math.max(0, breakdown.total)
+    const scale = Math.max(
+        1,
+        total,
+        breakdown.system,
+        breakdown.user,
+        breakdown.assistant,
+        breakdown.tools,
+    )
     const activePruned = breakdown.prunedToolCount + breakdown.prunedMessageCount
 
     return (
@@ -48,7 +56,7 @@ export function ContextDialog(props: {
                 <Metric
                     theme={theme}
                     label="Total in context"
-                    value={`~${formatTokenCount(total)}`}
+                    value={`~${formatTokenCount(total, true)}`}
                     hint="tokens"
                 />
                 <Metric
@@ -60,7 +68,7 @@ export function ContextDialog(props: {
                 <Metric
                     theme={theme}
                     label="Tokens pruned"
-                    value={`~${formatTokenCount(breakdown.prunedTokens)}`}
+                    value={`~${formatTokenCount(breakdown.prunedTokens, true)}`}
                     hint="tokens"
                 />
             </Card>
@@ -69,33 +77,33 @@ export function ContextDialog(props: {
                     theme={theme}
                     label="System"
                     value={breakdown.system}
-                    total={total}
+                    total={scale}
                     color="primary"
-                    detail={`~${formatTokenCount(breakdown.system)} tokens`}
+                    detail={`~${formatTokenCount(breakdown.system, true)} tokens`}
                 />
                 <Progress
                     theme={theme}
                     label="User"
                     value={breakdown.user}
-                    total={total}
+                    total={scale}
                     color="primary"
-                    detail={`~${formatTokenCount(breakdown.user)} tokens`}
+                    detail={`~${formatTokenCount(breakdown.user, true)} tokens`}
                 />
                 <Progress
                     theme={theme}
                     label="Assistant"
                     value={breakdown.assistant}
-                    total={total}
+                    total={scale}
                     color="primary"
-                    detail={`~${formatTokenCount(breakdown.assistant)} tokens`}
+                    detail={`~${formatTokenCount(breakdown.assistant, true)} tokens`}
                 />
                 <Progress
                     theme={theme}
                     label={`Tools (${breakdown.toolsInContextCount})`}
                     value={breakdown.tools}
-                    total={total}
+                    total={scale}
                     color="primary"
-                    detail={`~${formatTokenCount(breakdown.tools)} tokens`}
+                    detail={`~${formatTokenCount(breakdown.tools, true)} tokens`}
                 />
             </Card>
         </DcpFrame>
@@ -111,13 +119,13 @@ export function StatsDialog(props: { api: TuiApi; report: StatsReport; onBack: (
                 <Metric
                     theme={theme}
                     label="Tokens saved"
-                    value={`~${formatTokenCount(props.report.sessionTokens)}`}
+                    value={`~${formatTokenCount(props.report.sessionTokens, true)}`}
                     hint="tokens"
                 />
                 <Metric
                     theme={theme}
                     label="Summary size"
-                    value={`~${formatTokenCount(props.report.sessionSummaryTokens)}`}
+                    value={`~${formatTokenCount(props.report.sessionSummaryTokens, true)}`}
                     hint="tokens"
                 />
                 <Metric theme={theme} label="Compression ratio" value={ratio} />
@@ -137,7 +145,7 @@ export function StatsDialog(props: { api: TuiApi; report: StatsReport; onBack: (
                 <Metric
                     theme={theme}
                     label="Tokens saved"
-                    value={`~${formatTokenCount(props.report.allTime.totalTokens)}`}
+                    value={`~${formatTokenCount(props.report.allTime.totalTokens, true)}`}
                     hint="tokens"
                 />
                 <Metric
@@ -205,7 +213,7 @@ export function PanelDialog(props: {
                 {targets.length === 0 ? (
                     <text fg={theme.textMuted}>No active compressions.</text>
                 ) : (
-                    <scrollbox height={6} scrollY={true}>
+                    <scrollbox height={10} scrollY={true}>
                         {targets.map((target) => (
                             <BlockRow
                                 theme={theme}
