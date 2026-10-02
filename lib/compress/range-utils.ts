@@ -57,10 +57,11 @@ export function resolveRanges(
     state: SessionState,
 ): ResolvedRangeCompression[] {
     return args.content.map((entry, index) => {
-        const normalizedEntry = {
+        const normalizedEntry: CompressRangeEntry = {
             startId: entry.startId.trim(),
             endId: entry.endId.trim(),
             summary: entry.summary,
+            replaceBlockIds: entry.replaceBlockIds,
         }
 
         const { startReference, endReference } = resolveBoundaryIds(
