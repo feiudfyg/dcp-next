@@ -34,7 +34,7 @@ const server: Plugin = (async (ctx) => {
     }
 
     if (isSecureMode()) {
-        configureClientAuth(ctx.client)
+        configureClientAuth(ctx.client, logger)
         // logger.info("Secure mode detected, configured client authentication")
     }
 
