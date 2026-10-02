@@ -10,6 +10,7 @@ import type { ToolContext } from "./types"
 import { buildSearchContext, fetchSessionMessages } from "./search"
 import type { SearchContext } from "./types"
 import { applyPendingCompressionDurations } from "./timing"
+import { compressPermission } from "../compress-permission"
 
 interface RunContext {
     ask(input: {
@@ -47,12 +48,14 @@ export async function prepareSession(
         )
     }
 
-    await toolCtx.ask({
-        permission: "compress",
-        patterns: ["*"],
-        always: ["*"],
-        metadata: {},
-    })
+    if (compressPermission(ctx.state, ctx.config) === "ask") {
+        await toolCtx.ask({
+            permission: "compress",
+            patterns: ["*"],
+            always: ["*"],
+            metadata: {},
+        })
+    }
 
     toolCtx.metadata({ title })
 
