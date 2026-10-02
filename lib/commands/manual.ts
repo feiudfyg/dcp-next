@@ -13,7 +13,10 @@ import type { PluginConfig } from "../config"
 import { sendIgnoredMessage } from "../ui/notification"
 import { saveManualModeSetting } from "../state/persistence"
 import { getCurrentParams } from "../token-utils"
-import { buildCompressedBlockGuidance } from "../prompts/extensions/nudge"
+import {
+    buildCompressedBlockGuidance,
+    buildCompressionTokenGuidance,
+} from "../prompts/extensions/nudge"
 import { isIgnoredUserMessage } from "../messages/query"
 
 const MANUAL_MODE_ON = "Manual mode is now ON. Use /dcp-compress to trigger context tools manually."
@@ -36,12 +39,12 @@ function getTriggerPrompt(
     userFocus?: string,
 ): string {
     const base = COMPRESS_TRIGGER_PROMPT
-    const compressedBlockGuidance =
+    const guidance =
         config.compress.mode === "message"
-            ? ""
+            ? buildCompressionTokenGuidance(state)
             : buildCompressedBlockGuidance(state, config.compress.allowPriorSummaryDrop, messages)
 
-    const sections = [base, compressedBlockGuidance]
+    const sections = [base, guidance]
     if (userFocus && userFocus.trim().length > 0) {
         sections.push(`Additional user focus:\n${userFocus.trim()}`)
     }
