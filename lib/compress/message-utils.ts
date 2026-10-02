@@ -3,6 +3,7 @@ import type { SessionState } from "../state"
 import { parseBoundaryId } from "../message-ids"
 import { isIgnoredUserMessage, isProtectedUserMessage } from "../messages/query"
 import { resolveAnchorMessageId, resolveBoundaryIds, resolveSelection } from "./search"
+import { isPrunedCompressArgsPlaceholder } from "./placeholders"
 import type {
     CompressMessageEntry,
     CompressMessageToolArgs,
@@ -49,6 +50,12 @@ export function validateArgs(args: CompressMessageToolArgs): void {
 
         if (typeof entry?.summary !== "string" || entry.summary.trim().length === 0) {
             throw new Error(`${prefix}.summary is required and must be a non-empty string`)
+        }
+
+        if (isPrunedCompressArgsPlaceholder(entry.summary)) {
+            throw new Error(
+                `${prefix}.summary is the pruned compress-call placeholder, not a real summary. Read the actual message content and write a real summary.`,
+            )
         }
     }
 }

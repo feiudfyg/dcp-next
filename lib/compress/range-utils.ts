@@ -1,6 +1,7 @@
 import type { CompressionBlock, SessionState } from "../state"
 import { parseBlockRef } from "../message-ids"
 import { resolveAnchorMessageId, resolveBoundaryIds, resolveSelection } from "./search"
+import { isPrunedCompressArgsPlaceholder } from "./placeholders"
 import type {
     BoundaryReference,
     CompressRangeEntry,
@@ -36,6 +37,12 @@ export function validateArgs(args: CompressRangeToolArgs): void {
 
         if (typeof entry?.summary !== "string" || entry.summary.trim().length === 0) {
             throw new Error(`${prefix}.summary is required and must be a non-empty string`)
+        }
+
+        if (isPrunedCompressArgsPlaceholder(entry.summary)) {
+            throw new Error(
+                `${prefix}.summary is the pruned compress-call placeholder, not a real summary. Read the actual content inside the range and write a real technical summary.`,
+            )
         }
 
         if (entry?.replaceBlockIds !== undefined) {
