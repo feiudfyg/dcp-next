@@ -3,7 +3,6 @@ import type { SessionState } from "../state"
 import { parseBoundaryId } from "../message-ids"
 import { isIgnoredUserMessage, isProtectedUserMessage } from "../messages/query"
 import { resolveAnchorMessageId, resolveBoundaryIds, resolveSelection } from "./search"
-import { COMPRESSED_BLOCK_HEADER } from "./state"
 import type {
     CompressMessageEntry,
     CompressMessageToolArgs,
@@ -54,26 +53,6 @@ export function validateArgs(args: CompressMessageToolArgs): void {
     }
 }
 
-export function formatResult(
-    processedCount: number,
-    skippedIssues: string[],
-    skippedCount: number,
-): string {
-    const messageNoun = processedCount === 1 ? "message" : "messages"
-    const processedText =
-        processedCount > 0
-            ? `Compressed ${processedCount} ${messageNoun} into ${COMPRESSED_BLOCK_HEADER}.`
-            : "Compressed 0 messages."
-
-    if (skippedCount === 0) {
-        return processedText
-    }
-
-    const issueNoun = skippedCount === 1 ? "issue" : "issues"
-    const issueLines = skippedIssues.map((issue) => `- ${issue}`).join("\n")
-    return `${processedText}\nSkipped ${skippedCount} ${issueNoun}:\n${issueLines}`
-}
-
 export function formatIssues(skippedIssues: string[], skippedCount: number): string {
     const issueNoun = skippedCount === 1 ? "issue" : "issues"
     const issueLines = skippedIssues.map((issue) => `- ${issue}`).join("\n")
@@ -90,8 +69,8 @@ const ISSUE_TEMPLATES: Record<string, [singular: string, plural: string]> = {
         "are invalid. Use injected raw message IDs of the form mNNNN.",
     ],
     "block-id": [
-        "is invalid here. Block IDs like bN are not allowed; use an mNNNN message ID instead.",
-        "are invalid here. Block IDs like bN are not allowed; use mNNNN message IDs instead.",
+        "is a compressed block, which message mode cannot target. Switch to range mode and use (bN) boundaries instead.",
+        "are compressed blocks, which message mode cannot target. Switch to range mode and use (bN) boundaries instead.",
     ],
     "not-in-context": [
         "is not available in the current conversation context. Choose an injected mNNNN ID visible in context.",

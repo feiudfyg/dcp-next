@@ -91,9 +91,24 @@ export interface InjectedSummaryResult {
 
 export interface AppliedCompressionResult {
     compressedTokens: number
+    consumedSummaryTokens: number
+    netRemovedTokens: number
     messageIds: string[]
     newlyCompressedMessageIds: string[]
     newlyCompressedToolIds: string[]
+}
+
+export interface CompressionOutcome {
+    blockId: number
+    topic: string
+    newMessageCount: number
+    newToolCount: number
+    compressedTokens: number
+    consumedSummaryTokens: number
+    summaryTokens: number
+    netRemovedTokens: number
+    consumedBlockIds: number[]
+    autoNestedBlockIds: number[]
 }
 
 export interface CompressionStateInput {

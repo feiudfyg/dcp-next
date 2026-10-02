@@ -207,7 +207,7 @@ test("compress message mode batches individual message summaries", async () => {
         },
     )
 
-    assert.equal(result, "Compressed 2 messages into [Compressed conversation section].")
+    assert.match(result, /^Compressed 2 new messages into b1, b2\./)
     assert.equal(state.prune.messages.blocksById.size, 2)
 
     const blocks = Array.from(state.prune.messages.blocksById.values()).sort(
@@ -555,7 +555,7 @@ test("compress message mode skips protected user message references", async () =
     )
 
     assert.equal(state.prune.messages.blocksById.size, 1)
-    assert.match(result, /^Compressed 1 message into \[Compressed conversation section\]\./)
+    assert.match(result, /^Compressed 1 new message into b\d+\./)
     assert.match(result, /Skipped 2 issues:/)
     assert.match(result, /messageId BLOCKED refers to a protected message/)
     assert.match(result, /messageId m0001 refers to a protected message/)
@@ -628,7 +628,7 @@ test("compress message mode allows messages containing compress tool parts", asy
         },
     )
 
-    assert.equal(result, "Compressed 1 message into [Compressed conversation section].")
+    assert.match(result, /^Compressed 1 new message into b\d+\./)
     assert.equal(state.prune.messages.blocksById.size, 1)
     const block = Array.from(state.prune.messages.blocksById.values())[0]
     assert.equal(block?.startId, "m0004")
@@ -766,7 +766,7 @@ test("compress message mode skips messages that are already actively compressed"
     )
 
     assert.equal(state.prune.messages.blocksById.size, 2)
-    assert.match(result, /^Compressed 1 message into \[Compressed conversation section\]\./)
+    assert.match(result, /^Compressed 1 new message into b\d+\./)
     assert.match(result, /Skipped 1 issue:/)
     assert.match(result, /messageId m0002 is already part of an active compression\./)
 })
@@ -829,9 +829,9 @@ test("compress message mode skips invalid batch entries and reports issues", asy
     )
 
     assert.equal(state.prune.messages.blocksById.size, 1)
-    assert.match(result, /^Compressed 1 message into \[Compressed conversation section\]\./)
+    assert.match(result, /^Compressed 1 new message into b\d+\./)
     assert.match(result, /Skipped 3 issues:/)
-    assert.match(result, /Block IDs like bN are not allowed/)
+    assert.match(result, /message mode cannot target/)
     assert.match(result, /messageId m9999 is not available in the current conversation context/)
     assert.match(result, /messageId m0002 was selected more than once in this batch\./)
 })

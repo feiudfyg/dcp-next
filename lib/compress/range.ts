@@ -25,13 +25,13 @@ import {
     validateSummaryPlaceholders,
 } from "./range-utils"
 import {
-    COMPRESSED_BLOCK_HEADER,
     allocateBlockId,
     allocateRunId,
     applyCompressionState,
     wrapCompressedSummary,
 } from "./state"
-import type { CompressRangeToolArgs } from "./types"
+import { formatCompressionResult } from "./result"
+import type { CompressRangeToolArgs, CompressionOutcome } from "./types"
 
 function buildSchema() {
     return {
@@ -102,8 +102,9 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                 anchorMessageId: string
                 finalSummary: string
                 consumedBlockIds: number[]
+                missingBlockIds: number[]
+                replaceBlockIds: number[]
             }> = []
-            let totalCompressedMessages = 0
 
             for (const plan of resolvedPlans) {
                 const parsedPlaceholders = parseBlockPlaceholders(plan.entry.summary)
@@ -173,10 +174,13 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                     anchorMessageId: plan.anchorMessageId,
                     finalSummary: completedSummary.expandedSummary,
                     consumedBlockIds: completedSummary.consumedBlockIds,
+                    missingBlockIds,
+                    replaceBlockIds,
                 })
             }
 
             const runId = allocateRunId(ctx.state)
+            const outcomes: CompressionOutcome[] = []
 
             for (const preparedPlan of preparedPlans) {
                 const blockId = allocateBlockId(ctx.state)
@@ -203,7 +207,20 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                     preparedPlan.consumedBlockIds,
                 )
 
-                totalCompressedMessages += applied.messageIds.length
+                outcomes.push({
+                    blockId,
+                    topic: input.topic,
+                    newMessageCount: applied.newlyCompressedMessageIds.length,
+                    newToolCount: applied.newlyCompressedToolIds.length,
+                    compressedTokens: applied.compressedTokens,
+                    consumedSummaryTokens: applied.consumedSummaryTokens,
+                    summaryTokens,
+                    netRemovedTokens: applied.netRemovedTokens,
+                    consumedBlockIds: preparedPlan.consumedBlockIds,
+                    autoNestedBlockIds: preparedPlan.missingBlockIds.filter(
+                        (id) => !preparedPlan.replaceBlockIds.includes(id),
+                    ),
+                })
 
                 notifications.push({
                     blockId,
@@ -215,7 +232,7 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
 
             await finalizeSession(ctx, toolCtx, rawMessages, notifications, input.topic)
 
-            return `Compressed ${totalCompressedMessages} messages into ${COMPRESSED_BLOCK_HEADER}.`
+            return formatCompressionResult({ outcomes })
         },
     })
 }

@@ -72,6 +72,14 @@ export function applyCompressionState(
     const consumed = [...new Set(consumedBlockIds.filter((id) => Number.isInteger(id) && id > 0))]
     const included = [...consumed]
 
+    let consumedSummaryTokens = 0
+    for (const consumedBlockId of consumed) {
+        const consumedBlock = messagesState.blocksById.get(consumedBlockId)
+        if (consumedBlock && consumedBlock.active) {
+            consumedSummaryTokens += consumedBlock.summaryTokens
+        }
+    }
+
     const effectiveMessageIds = new Set<string>(selection.messageIds)
     const effectiveToolIds = new Set<string>(selection.toolIds)
 
@@ -255,12 +263,16 @@ export function applyCompressionState(
 
     block.compressedTokens = compressedTokens
 
+    const netRemovedTokens = compressedTokens + consumedSummaryTokens - input.summaryTokens
+
     state.stats.pruneTokenCounter += compressedTokens
     state.stats.totalPruneTokens += state.stats.pruneTokenCounter
     state.stats.pruneTokenCounter = 0
 
     return {
         compressedTokens,
+        consumedSummaryTokens,
+        netRemovedTokens,
         messageIds: selection.messageIds,
         newlyCompressedMessageIds,
         newlyCompressedToolIds,

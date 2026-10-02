@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import type { ToolContext } from "./types"
 import { countTokens } from "../token-utils"
 import { MESSAGE_FORMAT_EXTENSION } from "../prompts/extensions/tool"
-import { formatIssues, formatResult, resolveMessages, validateArgs } from "./message-utils"
+import { formatIssues, resolveMessages, validateArgs } from "./message-utils"
 import { finalizeSession, prepareSession, type NotificationEntry } from "./pipeline"
 import { appendProtectedPromptInfo, appendProtectedTools } from "./protected-content"
 import {
@@ -11,7 +11,8 @@ import {
     applyCompressionState,
     wrapCompressedSummary,
 } from "./state"
-import type { CompressMessageToolArgs } from "./types"
+import { formatCompressionResult } from "./result"
+import type { CompressMessageToolArgs, CompressionOutcome } from "./types"
 
 function buildSchema() {
     return {
@@ -103,13 +104,14 @@ export function createCompressMessageTool(ctx: ToolContext): ReturnType<typeof t
             }
 
             const runId = allocateRunId(ctx.state)
+            const outcomes: CompressionOutcome[] = []
 
             for (const { plan, summaryWithTools } of preparedPlans) {
                 const blockId = allocateBlockId(ctx.state)
                 const storedSummary = wrapCompressedSummary(blockId, summaryWithTools)
                 const summaryTokens = countTokens(storedSummary)
 
-                applyCompressionState(
+                const applied = applyCompressionState(
                     ctx.state,
                     {
                         topic: plan.entry.topic,
@@ -129,6 +131,19 @@ export function createCompressMessageTool(ctx: ToolContext): ReturnType<typeof t
                     [],
                 )
 
+                outcomes.push({
+                    blockId,
+                    topic: plan.entry.topic,
+                    newMessageCount: applied.newlyCompressedMessageIds.length,
+                    newToolCount: applied.newlyCompressedToolIds.length,
+                    compressedTokens: applied.compressedTokens,
+                    consumedSummaryTokens: applied.consumedSummaryTokens,
+                    summaryTokens,
+                    netRemovedTokens: applied.netRemovedTokens,
+                    consumedBlockIds: [],
+                    autoNestedBlockIds: [],
+                })
+
                 notifications.push({
                     blockId,
                     runId,
@@ -139,7 +154,7 @@ export function createCompressMessageTool(ctx: ToolContext): ReturnType<typeof t
 
             await finalizeSession(ctx, toolCtx, rawMessages, notifications, input.topic)
 
-            return formatResult(plans.length, skippedIssues, skippedCount)
+            return formatCompressionResult({ outcomes, skippedIssues, skippedCount })
         },
     })
 }
