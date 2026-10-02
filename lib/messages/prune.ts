@@ -11,7 +11,7 @@ const PRUNED_TOOL_OUTPUT_REPLACEMENT =
 const PRUNED_TOOL_ERROR_INPUT_REPLACEMENT = "[input removed due to failed tool call]"
 const PRUNED_QUESTION_INPUT_REPLACEMENT = "[questions removed - see output for user's answers]"
 const PRUNED_COMPRESS_ARGS_REPLACEMENT =
-    "[compress call args removed - the compressed block summary is in context]"
+    "[compress call args removed - summary is now the active [Compressed conversation section]]"
 
 export const prune = (
     state: SessionState,
