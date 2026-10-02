@@ -66,8 +66,9 @@ async function fetchFullMessages(api: TuiApi, sessionID: string): Promise<WithPa
         let response: any
         try {
             response = await client.session.messages({
-                path: { sessionID },
-                query: before ? { limit: 200, before } : { limit: 200 },
+                sessionID,
+                limit: 200,
+                ...(before ? { before } : {}),
             })
         } catch {
             break
