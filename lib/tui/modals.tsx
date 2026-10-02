@@ -3,8 +3,14 @@
 import { buildStatsReport } from "../commands/stats"
 import type { PluginConfig } from "../config"
 import { saveManualModeSetting } from "../state/persistence"
-import { loadSessionData, logger } from "./data"
-import { ContextDialog, ContextMapDialog, PanelDialog, StatsDialog, StatusDialog } from "./dialogs"
+import { activeSessionID, loadSessionData, logger } from "./data"
+import {
+    ContextDialog,
+    ContextMapDialog,
+    StatsDialog,
+    StatusDialog,
+    type PanelBodyProps,
+} from "./dialogs"
 import {
     runCompress,
     runDecompress,
@@ -14,6 +20,8 @@ import {
     runSweep,
 } from "./actions"
 import type { TuiApi } from "./types"
+
+export const PANEL_ROUTE = "dcp-panel"
 
 function dialogSize(api: TuiApi): "medium" | "large" | "xlarge" {
     const width = api.renderer?.terminalWidth ?? 0
@@ -42,6 +50,38 @@ export function showStatusDialog(
 export function showError(api: TuiApi, title: string, error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
     showStatusDialog(api, title, "DCP Error", message || "Command failed.")
+}
+
+export async function openPanelRoute(api: TuiApi, config: PluginConfig): Promise<void> {
+    const data = await loadSessionData(api, config)
+    api.ui.dialog.clear()
+    if (!data || !data.state.sessionId) {
+        showStatusDialog(api, "DCP", "No session", "Open a session first.")
+        return
+    }
+    api.route.navigate(PANEL_ROUTE, { sessionID: data.state.sessionId, data })
+}
+
+export function openPanelModal(api: TuiApi, config: PluginConfig) {
+    void openPanelRoute(api, config)
+}
+
+export function panelHandlers(
+    api: TuiApi,
+    config: PluginConfig,
+): Omit<PanelBodyProps, "api" | "state" | "messages" | "config" | "wide" | "scrollHeight"> {
+    return {
+        onContext: () => openContextModal(api, config),
+        onContextMap: () => openContextMapModal(api, config),
+        onStats: () => openStatsModal(api, config),
+        onManual: (enabled) => void setManualMode(api, config, activeSessionID(api), enabled),
+        onSweep: () => runSweep(api, config),
+        onDecompress: () => runDecompress(api, config),
+        onRecompress: () => runRecompress(api, config),
+        onCompress: () => runCompress(api, config),
+        onDecompressBlock: (blockId) => runDecompressBlock(api, config, blockId),
+        onHelp: () => runHelp(api, config),
+    }
 }
 
 export function openContextModal(api: TuiApi, config: PluginConfig) {
@@ -94,34 +134,6 @@ export function openContextMapModal(api: TuiApi, config: PluginConfig) {
     })
 }
 
-export function openPanelModal(api: TuiApi, config: PluginConfig) {
-    runModal(api, "DCP", async () => {
-        const data = await loadSessionData(api, config)
-        if (!data) {
-            showStatusDialog(api, "DCP", "No session", "Open a session first.")
-            return
-        }
-        showDialog(api, () => (
-            <PanelDialog
-                api={api}
-                state={data.state}
-                messages={data.messages}
-                config={config}
-                onContext={() => openContextModal(api, config)}
-                onContextMap={() => openContextMapModal(api, config)}
-                onStats={() => openStatsModal(api, config)}
-                onManual={(enabled) => setManualMode(api, config, data.state.sessionId, enabled)}
-                onSweep={() => runSweep(api, config)}
-                onDecompress={() => runDecompress(api, config)}
-                onRecompress={() => runRecompress(api, config)}
-                onCompress={() => runCompress(api, config)}
-                onDecompressBlock={(blockId) => runDecompressBlock(api, config, blockId)}
-                onHelp={() => runHelp(api, config)}
-            />
-        ))
-    })
-}
-
 function runModal(api: TuiApi, title: string, task: () => Promise<void>) {
     showStatusDialog(api, title, "DCP", "Loading...")
     void task().catch((error) => showError(api, title, error))
@@ -132,8 +144,8 @@ async function setManualMode(
     config: PluginConfig,
     sessionID: string | null | undefined,
     enabled: boolean,
-) {
+): Promise<void> {
     if (!sessionID) return
     await saveManualModeSetting(sessionID, enabled, logger)
-    openPanelModal(api, config)
+    await openPanelRoute(api, config)
 }

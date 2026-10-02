@@ -221,4 +221,5 @@ async function startCompress(
         return
     }
     api.ui.dialog.clear()
+    api.route.navigate("session", { sessionID: data.state.sessionId })
 }

@@ -334,11 +334,13 @@ function MapRow(props: { theme: Theme; entry: ContextMapEntry }) {
     )
 }
 
-export function PanelDialog(props: {
+export interface PanelBodyProps {
     api: TuiApi
     state: SessionState
     messages: WithParts[]
     config: PluginConfig
+    wide: boolean
+    scrollHeight: number
     onContext: () => void
     onContextMap: () => void
     onStats: () => void
@@ -349,9 +351,11 @@ export function PanelDialog(props: {
     onCompress: () => void
     onDecompressBlock: (blockId: number) => void
     onHelp: () => void
-}) {
+}
+
+export function PanelBody(props: PanelBodyProps) {
     const theme = props.api.theme.current
-    const wide = isWide(props.api)
+    const wide = props.wide
     const canCompress = compressPermission(props.state, props.config) !== "deny"
     const manualEnabled = !!props.state.manualMode
     const targets = getActiveCompressionTargets(props.state.prune.messages)
@@ -380,7 +384,7 @@ export function PanelDialog(props: {
             {targets.length === 0 ? (
                 <text fg={theme.textMuted}>No active compressions.</text>
             ) : (
-                <scrollbox height={wide ? 14 : 10} scrollY={true}>
+                <scrollbox height={props.scrollHeight} scrollY={true}>
                     {targets.map((target) => (
                         <BlockRow
                             theme={theme}
@@ -404,92 +408,90 @@ export function PanelDialog(props: {
 
     if (wide) {
         return (
-            <DcpFrame api={props.api} eyebrow="DCP" title="Compression Panel">
-                <box flexDirection="row" gap={2} flexGrow={1} width="100%">
-                    <box flexDirection="column" gap={1} flexGrow={1} flexShrink={1}>
-                        {summaryBlock}
-                        {blocksCard}
-                    </box>
-                    <box flexDirection="column" gap={1} width={36} flexShrink={0}>
-                        <Card theme={theme} title="Actions">
-                            <box flexDirection="column" gap={0}>
-                                <ActionRow
-                                    theme={theme}
-                                    title="Context"
-                                    detail="Tokens"
-                                    onClick={props.onContext}
-                                />
-                                <ActionRow
-                                    theme={theme}
-                                    title="Map"
-                                    detail="Timeline"
-                                    onClick={props.onContextMap}
-                                />
-                                <ActionRow
-                                    theme={theme}
-                                    title="Stats"
-                                    detail="Savings"
-                                    onClick={props.onStats}
-                                />
-                                <ActionRow
-                                    theme={theme}
-                                    title="Sweep"
-                                    detail="Prune"
-                                    onClick={props.onSweep}
-                                />
-                                {canCompress ? (
-                                    <ActionRow
-                                        theme={theme}
-                                        title="Decompress"
-                                        detail="Restore"
-                                        onClick={props.onDecompress}
-                                    />
-                                ) : null}
-                                {canCompress ? (
-                                    <ActionRow
-                                        theme={theme}
-                                        title="Recompress"
-                                        detail="Re-apply"
-                                        onClick={props.onRecompress}
-                                    />
-                                ) : null}
-                                {canCompress ? (
-                                    <ActionRow
-                                        theme={theme}
-                                        title="Compress"
-                                        detail="Now"
-                                        onClick={props.onCompress}
-                                    />
-                                ) : null}
-                                <ActionRow
-                                    theme={theme}
-                                    title="Help"
-                                    detail="Commands"
-                                    onClick={props.onHelp}
-                                />
-                            </box>
-                        </Card>
-                        <Card theme={theme} title="Session">
-                            <ManualModeToggle
-                                api={props.api}
-                                state={props.state}
-                                onToggle={props.onManual}
-                            />
-                            <StatusPill
-                                theme={theme}
-                                label="Compression"
-                                value={canCompress ? "enabled" : "disabled"}
-                                accent={canCompress ? "success" : "warning"}
-                            />
-                        </Card>
-                    </box>
+            <box flexDirection="row" gap={2} flexGrow={1} width="100%">
+                <box flexDirection="column" gap={1} flexGrow={1} flexShrink={1}>
+                    {summaryBlock}
+                    {blocksCard}
                 </box>
-            </DcpFrame>
+                <box flexDirection="column" gap={1} width={36} flexShrink={0}>
+                    <Card theme={theme} title="Actions">
+                        <box flexDirection="column" gap={0}>
+                            <ActionRow
+                                theme={theme}
+                                title="Context"
+                                detail="Tokens"
+                                onClick={props.onContext}
+                            />
+                            <ActionRow
+                                theme={theme}
+                                title="Map"
+                                detail="Timeline"
+                                onClick={props.onContextMap}
+                            />
+                            <ActionRow
+                                theme={theme}
+                                title="Stats"
+                                detail="Savings"
+                                onClick={props.onStats}
+                            />
+                            <ActionRow
+                                theme={theme}
+                                title="Sweep"
+                                detail="Prune"
+                                onClick={props.onSweep}
+                            />
+                            {canCompress ? (
+                                <ActionRow
+                                    theme={theme}
+                                    title="Decompress"
+                                    detail="Restore"
+                                    onClick={props.onDecompress}
+                                />
+                            ) : null}
+                            {canCompress ? (
+                                <ActionRow
+                                    theme={theme}
+                                    title="Recompress"
+                                    detail="Re-apply"
+                                    onClick={props.onRecompress}
+                                />
+                            ) : null}
+                            {canCompress ? (
+                                <ActionRow
+                                    theme={theme}
+                                    title="Compress"
+                                    detail="Now"
+                                    onClick={props.onCompress}
+                                />
+                            ) : null}
+                            <ActionRow
+                                theme={theme}
+                                title="Help"
+                                detail="Commands"
+                                onClick={props.onHelp}
+                            />
+                        </box>
+                    </Card>
+                    <Card theme={theme} title="Session">
+                        <ManualModeToggle
+                            api={props.api}
+                            state={props.state}
+                            onToggle={props.onManual}
+                        />
+                        <StatusPill
+                            theme={theme}
+                            label="Compression"
+                            value={canCompress ? "enabled" : "disabled"}
+                            accent={canCompress ? "success" : "warning"}
+                        />
+                    </Card>
+                </box>
+            </box>
         )
     }
 
     return (
-        <DcpFrame api={props.api} eyebrow="DCP" title="Compression Panel">
+        <box flexDirection="column" gap={1} width="100%">
             {summaryBlock}
             {blocksCard}
             <box flexDirection="row" gap={1} flexWrap="wrap">
@@ -514,6 +516,15 @@ export function PanelDialog(props: {
                 {manualButton}
                 <ActionButton theme={theme} label="Help" onClick={props.onHelp} />
             </box>
+        </box>
+    )
+}
+
+export function PanelDialog(props: Omit<PanelBodyProps, "wide" | "scrollHeight">) {
+    const wide = isWide(props.api)
+    return (
+        <DcpFrame api={props.api} eyebrow="DCP" title="Compression Panel">
+            <PanelBody {...props} wide={wide} scrollHeight={wide ? 14 : 10} />
         </DcpFrame>
     )
 }
@@ -572,8 +583,8 @@ function ManualModeToggle(props: {
     const track = enabled ? theme.success : theme.error
     return (
         <box flexDirection="row" justifyContent="space-between" paddingLeft={1} paddingRight={1}>
-            <box width={22}>
-                <text fg={theme.primary} attributes={TextAttributes.BOLD}>
+            <box width={20} flexShrink={0}>
+                <text fg={theme.primary} attributes={TextAttributes.BOLD} truncate>
                     Manual mode
                 </text>
             </box>

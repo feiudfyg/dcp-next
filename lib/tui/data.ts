@@ -93,3 +93,5 @@ export async function loadSessionData(api: TuiApi, config: PluginConfig) {
     const state = await buildSessionState(sessionID, messages, config)
     return { state, messages }
 }
+
+export type SessionData = NonNullable<Awaited<ReturnType<typeof loadSessionData>>>
