@@ -66,6 +66,7 @@ export function openPanelModal(api: TuiApi, config: PluginConfig) {
             <PanelDialog
                 api={api}
                 state={data.state}
+                messages={data.messages}
                 config={config}
                 onContext={() => openContextModal(api, config)}
                 onStats={() => openStatsModal(api, config)}

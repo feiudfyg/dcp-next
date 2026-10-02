@@ -1,5 +1,6 @@
 import { getConfig, type PluginConfig } from "../config"
 import { Logger } from "../logger"
+import { assignMessageRefs } from "../message-ids"
 import { filterMessages } from "../messages/shape"
 import { createSessionState, type SessionState, type WithParts } from "../state"
 import { loadSessionState } from "../state/persistence"
@@ -42,6 +43,7 @@ export async function buildSessionState(
     state.sessionId = sessionID
     state.manualMode = config.manualMode.enabled ? "active" : false
     state.lastCompaction = findLastCompactionTimestamp(messages)
+    assignMessageRefs(state, messages)
 
     const persisted = await loadSessionState(sessionID, logger)
     if (persisted) {

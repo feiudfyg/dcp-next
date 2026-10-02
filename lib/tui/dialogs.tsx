@@ -2,9 +2,9 @@
 
 import { compressPermission } from "../compress-permission"
 import { analyzeContextTokens } from "../commands/context"
-import { getActiveCompressionTargets } from "../commands/compression-targets"
 import type { PluginConfig } from "../config"
 import type { SessionState, WithParts } from "../state"
+import { findOldestUncompressedSpan, getCurrentTokenUsage } from "../token-utils"
 import { formatTokenCount } from "../ui/utils"
 import { TextAttributes } from "@opentui/core"
 import { formatDuration, formatRatio } from "./format"
@@ -158,6 +158,7 @@ export function StatsDialog(props: { api: TuiApi; report: StatsReport; onBack: (
 export function PanelDialog(props: {
     api: TuiApi
     state: SessionState
+    messages: WithParts[]
     config: PluginConfig
     onContext: () => void
     onStats: () => void
@@ -165,10 +166,21 @@ export function PanelDialog(props: {
 }) {
     const theme = props.api.theme.current
     const canCompress = compressPermission(props.state, props.config) !== "deny"
-    const compressedTokens = getActiveCompressionTargets(props.state.prune.messages).reduce(
-        (total, target) => total + target.compressedTokens,
-        0,
-    )
+    let blockCount = 0
+    let removedTokens = 0
+    let summaryTokens = 0
+    for (const blockId of props.state.prune.messages.activeBlockIds) {
+        const block = props.state.prune.messages.blocksById.get(blockId)
+        if (!block || !block.active) {
+            continue
+        }
+        blockCount++
+        removedTokens += block.compressedTokens
+        summaryTokens += block.summaryTokens
+    }
+    const netSaved = removedTokens - summaryTokens
+    const backlog = findOldestUncompressedSpan(props.state, props.messages)
+    const currentTokens = getCurrentTokenUsage(props.state, props.messages)
     return (
         <DcpFrame api={props.api} eyebrow="DCP">
             <Card theme={theme} title="Views">
@@ -188,11 +200,40 @@ export function PanelDialog(props: {
                 </box>
             </Card>
             <Card theme={theme} title="Compression">
+                <Metric theme={theme} label="Active blocks" value={String(blockCount)} />
                 <Metric
                     theme={theme}
-                    label="Tokens compressed"
-                    value={`~${formatTokenCount(compressedTokens, true)}`}
-                    hint="tokens (active)"
+                    label="Removed (active)"
+                    value={`~${formatTokenCount(removedTokens, true)}`}
+                    hint="tokens"
+                />
+                <Metric
+                    theme={theme}
+                    label="Summaries (active)"
+                    value={`~${formatTokenCount(summaryTokens, true)}`}
+                    hint="tokens"
+                />
+                <Metric
+                    theme={theme}
+                    label="Net saved"
+                    value={`${netSaved < 0 ? "+" : "-"}${formatTokenCount(Math.abs(netSaved), true)}`}
+                    hint="tokens"
+                />
+                <Metric
+                    theme={theme}
+                    label="Uncompressed backlog"
+                    value={backlog ? `~${formatTokenCount(backlog.tokens, true)}` : "none"}
+                    hint={
+                        backlog
+                            ? `tokens (${backlog.startRef}..${backlog.endRef}, ${backlog.messageCount} msgs)`
+                            : "tokens"
+                    }
+                />
+                <Metric
+                    theme={theme}
+                    label="Current context"
+                    value={`~${formatTokenCount(currentTokens, true)}`}
+                    hint="tokens"
                 />
             </Card>
             <Card theme={theme} title="Prompt">
