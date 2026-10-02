@@ -17,11 +17,21 @@ export function loadConfig(api: TuiApi): PluginConfig {
     } as any)
 }
 
+let fallbackSessionID: string | undefined
+
+export function setFallbackSessionID(sessionID: string | undefined): void {
+    fallbackSessionID = sessionID
+}
+
 export function activeSessionID(api: TuiApi): string | undefined {
     const current = api.route.current
-    if (current.name !== "session") return undefined
-    const sessionID = current.params?.sessionID
-    return typeof sessionID === "string" ? sessionID : undefined
+    if (current.name === "session") {
+        const sessionID = current.params?.sessionID
+        if (typeof sessionID === "string") {
+            return sessionID
+        }
+    }
+    return fallbackSessionID
 }
 
 async function fetchFullMessages(api: TuiApi, sessionID: string): Promise<WithParts[]> {

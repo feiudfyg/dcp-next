@@ -3,7 +3,7 @@
 import { buildStatsReport } from "../commands/stats"
 import type { PluginConfig } from "../config"
 import { saveManualModeSetting } from "../state/persistence"
-import { activeSessionID, loadSessionData, logger } from "./data"
+import { activeSessionID, loadSessionData, logger, setFallbackSessionID } from "./data"
 import {
     ContextDialog,
     ContextMapDialog,
@@ -59,6 +59,7 @@ export async function openPanelRoute(api: TuiApi, config: PluginConfig): Promise
         showStatusDialog(api, "DCP", "No session", "Open a session first.")
         return
     }
+    setFallbackSessionID(data.state.sessionId)
     api.route.navigate(PANEL_ROUTE, { sessionID: data.state.sessionId, data })
 }
 

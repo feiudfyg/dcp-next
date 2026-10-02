@@ -230,21 +230,26 @@ export function ActionRow(props: {
     return (
         <box
             flexDirection="row"
-            justifyContent="space-between"
+            gap={2}
+            width="100%"
             paddingLeft={1}
             paddingRight={1}
             onMouseUp={props.onClick}
         >
-            <box flexDirection="row" gap={2}>
-                <box width={12}>
-                    <text fg={accent} attributes={TextAttributes.BOLD}>
-                        {props.title}
-                    </text>
-                </box>
-                <text fg={props.theme.text}>{props.detail}</text>
+            <box width={12} flexShrink={0}>
+                <text fg={accent} attributes={TextAttributes.BOLD} truncate>
+                    {props.title}
+                </text>
             </box>
-            <box paddingLeft={2} paddingRight={2} backgroundColor={accent}>
-                <text fg={props.theme.selectedListItemText}>open</text>
+            <box flexGrow={1} flexShrink={1}>
+                <text fg={props.theme.textMuted} truncate>
+                    {props.detail}
+                </text>
+            </box>
+            <box flexShrink={0}>
+                <text fg={accent} attributes={TextAttributes.BOLD}>
+                    {">"}
+                </text>
             </box>
         </box>
     )
