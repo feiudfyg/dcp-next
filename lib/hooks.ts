@@ -115,6 +115,9 @@ export function createChatMessageTransformHandler(
     return async (input: {}, output: { messages: WithParts[] }) => {
         const receivedMessages = Array.isArray(output.messages) ? output.messages.length : 0
         const messages = filterMessagesInPlace(output.messages)
+        if (messages !== output.messages) {
+            output.messages = messages
+        }
         if (messages.length !== receivedMessages) {
             logger.warn("Skipping messages with unexpected shape during chat transform", {
                 received: receivedMessages,

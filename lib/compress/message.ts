@@ -1,5 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import type { ToolContext } from "./types"
+import { compressPermission } from "../compress-permission"
 import { countTokens } from "../token-utils"
 import { MESSAGE_FORMAT_EXTENSION } from "../prompts/extensions/tool"
 import { formatIssues, resolveMessages, validateArgs } from "./message-utils"
@@ -49,6 +50,10 @@ export function createCompressMessageTool(ctx: ToolContext): ReturnType<typeof t
         async execute(args, toolCtx) {
             const input = args as CompressMessageToolArgs
             validateArgs(input)
+
+            if (compressPermission(ctx.state, ctx.config) === "deny") {
+                throw new Error("Compression is disabled by permissions.")
+            }
             const callId =
                 typeof (toolCtx as unknown as { callID?: unknown }).callID === "string"
                     ? (toolCtx as unknown as { callID: string }).callID

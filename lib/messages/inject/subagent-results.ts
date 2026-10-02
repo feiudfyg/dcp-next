@@ -8,6 +8,23 @@ import {
 } from "../../subagents/subagent-results"
 import { stripHallucinationsFromString } from "../utils"
 
+const MAX_SUBAGENT_RESULT_CACHE_SIZE = 500
+
+function trimSubAgentResultCache(state: SessionState): void {
+    if (state.subAgentResultCache.size <= MAX_SUBAGENT_RESULT_CACHE_SIZE) {
+        return
+    }
+
+    const excess = state.subAgentResultCache.size - MAX_SUBAGENT_RESULT_CACHE_SIZE
+    let removed = 0
+    for (const key of state.subAgentResultCache.keys()) {
+        state.subAgentResultCache.delete(key)
+        if (++removed >= excess) {
+            break
+        }
+    }
+}
+
 async function fetchSubAgentMessages(client: any, sessionId: string): Promise<WithParts[]> {
     const response = await client.session.messages({
         path: { id: sessionId },
@@ -79,4 +96,6 @@ export const injectExtendedSubAgentResults = async (
             )
         }
     }
+
+    trimSubAgentResultCache(state)
 }

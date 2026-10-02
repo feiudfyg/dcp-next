@@ -46,25 +46,28 @@ export class Logger {
 
     private getCallerFile(skipFrames: number = 3): string {
         const originalPrepareStackTrace = Error.prepareStackTrace
-        try {
-            const err = new Error()
-            Error.prepareStackTrace = (_, stack) => stack
-            const stack = err.stack as unknown as NodeJS.CallSite[]
-            Error.prepareStackTrace = originalPrepareStackTrace
+        let stack: NodeJS.CallSite[] = []
 
-            // Skip specified number of frames to get to actual caller
-            for (let i = skipFrames; i < stack.length; i++) {
-                const filename = stack[i]?.getFileName()
-                if (filename && !filename.includes("/logger.")) {
-                    // Extract just the filename without path and extension
-                    const match = filename.match(/([^/\\]+)\.[tj]s$/)
-                    return match ? match[1] : filename
-                }
-            }
-            return "unknown"
+        try {
+            Error.prepareStackTrace = (_, callSites) => callSites
+            const err = new Error()
+            stack = err.stack as unknown as NodeJS.CallSite[]
         } catch {
             return "unknown"
+        } finally {
+            Error.prepareStackTrace = originalPrepareStackTrace
         }
+
+        // Skip specified number of frames to get to actual caller
+        for (let i = skipFrames; i < stack.length; i++) {
+            const filename = stack[i]?.getFileName()
+            if (filename && !filename.includes("/logger.")) {
+                // Extract just the filename without path and extension
+                const match = filename.match(/([^/\\]+)\.[tj]s$/)
+                return match ? match[1] : filename
+            }
+        }
+        return "unknown"
     }
 
     private async write(level: string, component: string, message: string, data?: any) {
@@ -89,23 +92,23 @@ export class Logger {
     }
 
     info(message: string, data?: any) {
-        const component = this.getCallerFile(2)
-        return this.write("INFO", component, message, data)
+        if (!this.enabled) return Promise.resolve()
+        return this.write("INFO", this.getCallerFile(2), message, data)
     }
 
     debug(message: string, data?: any) {
-        const component = this.getCallerFile(2)
-        return this.write("DEBUG", component, message, data)
+        if (!this.enabled) return Promise.resolve()
+        return this.write("DEBUG", this.getCallerFile(2), message, data)
     }
 
     warn(message: string, data?: any) {
-        const component = this.getCallerFile(2)
-        return this.write("WARN", component, message, data)
+        if (!this.enabled) return Promise.resolve()
+        return this.write("WARN", this.getCallerFile(2), message, data)
     }
 
     error(message: string, data?: any) {
-        const component = this.getCallerFile(2)
-        return this.write("ERROR", component, message, data)
+        if (!this.enabled) return Promise.resolve()
+        return this.write("ERROR", this.getCallerFile(2), message, data)
     }
 
     /**

@@ -8,6 +8,8 @@ import { findOpencodeDir } from "./opencode-dir"
 type Permission = "ask" | "allow" | "deny"
 type CompressMode = "range" | "message"
 
+const CONFIG_TOAST_DELAY_MS = 7000
+
 export interface Deduplication {
     enabled: boolean
     protectedTools: string[]
@@ -690,11 +692,11 @@ function showConfigWarnings(
                     title: `DCP: ${configType} warning`,
                     message: `${configPath}\n${messages.join("\n")}`,
                     variant: "warning",
-                    duration: 7000,
+                    duration: CONFIG_TOAST_DELAY_MS,
                 },
             })
         } catch {}
-    }, 7000)
+    }, CONFIG_TOAST_DELAY_MS)
 }
 
 const defaultConfig: PluginConfig = {
@@ -1025,11 +1027,11 @@ function scheduleParseWarning(ctx: PluginInput, title: string, message: string):
                     title,
                     message,
                     variant: "warning",
-                    duration: 7000,
+                    duration: CONFIG_TOAST_DELAY_MS,
                 },
             })
         } catch {}
-    }, 7000)
+    }, CONFIG_TOAST_DELAY_MS)
 }
 
 export function getConfig(ctx: PluginInput): PluginConfig {

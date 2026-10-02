@@ -1,5 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import type { ToolContext } from "./types"
+import { compressPermission } from "../compress-permission"
 import { countTokens } from "../token-utils"
 import {
     RANGE_FORMAT_EXTENSION,
@@ -82,6 +83,10 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
         async execute(args, toolCtx) {
             const input = args as CompressRangeToolArgs
             validateArgs(input)
+
+            if (compressPermission(ctx.state, ctx.config) === "deny") {
+                throw new Error("Compression is disabled by permissions.")
+            }
             const callId =
                 typeof (toolCtx as unknown as { callID?: unknown }).callID === "string"
                     ? (toolCtx as unknown as { callID: string }).callID
