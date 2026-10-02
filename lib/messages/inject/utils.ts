@@ -355,6 +355,7 @@ export function applyAnchoredNudges(
     const compressedBlockGuidance = buildCompressedBlockGuidance(
         state,
         config.compress.allowPriorSummaryDrop,
+        messages,
     )
     applyRangeModeAnchoredNudge(
         state.nudges.contextLimitAnchors,

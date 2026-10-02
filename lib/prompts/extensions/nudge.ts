@@ -1,8 +1,9 @@
-import type { SessionState } from "../../state"
+import type { SessionState, WithParts } from "../../state"
 
 export function buildCompressedBlockGuidance(
     state: SessionState,
     allowPriorSummaryDrop = false,
+    messages?: WithParts[],
 ): string {
     const refs = Array.from(state.prune.messages.activeBlockIds)
         .filter((id) => Number.isInteger(id) && id > 0)
@@ -14,12 +15,54 @@ export function buildCompressedBlockGuidance(
         ? "- Prior blocks are re-compressible. Include a block's `(bN)` placeholder to keep it, or list it in `replaceBlockIds` to replace it with our condensed summary. Unlisted omitted blocks are preserved automatically."
         : "- Prior blocks are re-compressible. We may include them in a new range; include each required `(bN)` placeholder exactly once."
 
-    return [
+    const lines = [
         "Compressed block context:",
         `- Active compressed blocks in this session: ${blockCount} (${blockList})`,
         "- We may use `bN` boundaries and include prior blocks in a new range, not only the newest uncompressed messages.",
         action,
-    ].join("\n")
+        "- Start from the oldest uncompressed content and work forward. Do not leave uncompressed gaps between active blocks, and do not re-compress spans already covered by active blocks unless we are replacing them.",
+    ]
+
+    const oldestUncompressed = listOldestUncompressedRefs(state, messages)
+    if (oldestUncompressed.length > 0) {
+        lines.push(`- Oldest uncompressed messages to consider: ${oldestUncompressed.join(", ")}.`)
+    }
+
+    return lines.join("\n")
+}
+
+function listOldestUncompressedRefs(
+    state: SessionState,
+    messages: WithParts[] | undefined,
+    limit = 6,
+): string[] {
+    if (!messages || messages.length === 0) {
+        return []
+    }
+
+    const refs: string[] = []
+    for (const message of messages) {
+        if (message.info.role !== "assistant") {
+            continue
+        }
+
+        const ref = state.messageIds.byRawId.get(message.info.id)
+        if (!ref) {
+            continue
+        }
+
+        const entry = state.prune.messages.byMessageId.get(message.info.id)
+        if (entry && entry.activeBlockIds.length > 0) {
+            continue
+        }
+
+        refs.push(ref)
+        if (refs.length >= limit) {
+            break
+        }
+    }
+
+    return refs
 }
 
 export function renderMessagePriorityGuidance(priorityLabel: string, refs: string[]): string {
