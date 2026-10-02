@@ -11,7 +11,7 @@ import {
     isProtectedUserMessage,
     messageHasCompress,
 } from "../query"
-import { saveSessionState } from "../../state/persistence"
+import { scheduleSaveSessionState } from "../../state/persistence"
 import {
     appendToTextPart,
     appendToLastTextPart,
@@ -53,7 +53,7 @@ export const injectCompressNudges = (
         state.nudges.contextLimitAnchors.clear()
         state.nudges.turnNudgeAnchors.clear()
         state.nudges.iterationNudgeAnchors.clear()
-        void saveSessionState(state, logger)
+        void scheduleSaveSessionState(state, logger)
         return
     }
 
@@ -153,7 +153,7 @@ export const injectCompressNudges = (
     applyAnchoredNudges(state, config, messages, prompts, compressionPriorities)
 
     if (anchorsChanged) {
-        void saveSessionState(state, logger)
+        scheduleSaveSessionState(state, logger)
     }
 }
 

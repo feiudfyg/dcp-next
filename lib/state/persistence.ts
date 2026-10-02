@@ -112,6 +112,23 @@ export async function saveSessionState(
     }
 }
 
+const SAVE_DEBOUNCE_MS = 300
+const pendingSaveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+export function scheduleSaveSessionState(sessionState: SessionState, logger: Logger): void {
+    const sessionId = sessionState.sessionId
+    if (!sessionId || pendingSaveTimers.has(sessionId)) {
+        return
+    }
+
+    const timer = setTimeout(() => {
+        pendingSaveTimers.delete(sessionId)
+        void saveSessionState(sessionState, logger)
+    }, SAVE_DEBOUNCE_MS)
+    timer.unref()
+    pendingSaveTimers.set(sessionId, timer)
+}
+
 export async function loadSessionState(
     sessionId: string,
     logger: Logger,
