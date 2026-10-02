@@ -1,10 +1,12 @@
 import { getConfig, type PluginConfig } from "../config"
+import { fetchSessionMessages } from "../compress/search"
 import { Logger } from "../logger"
 import { assignMessageRefs } from "../message-ids"
 import { filterMessages } from "../messages/shape"
 import { createSessionState, type SessionState, type WithParts } from "../state"
 import { loadSessionState } from "../state/persistence"
 import { findLastCompactionTimestamp, loadPruneMap, loadPruneMessagesState } from "../state/utils"
+import type { SdkClient } from "../sdk-types"
 import type { TuiApi } from "./types"
 
 export const logger = new Logger(false)
@@ -24,15 +26,19 @@ export function activeSessionID(api: TuiApi): string | undefined {
     return typeof sessionID === "string" ? sessionID : undefined
 }
 
-export function sessionMessages(api: TuiApi, sessionID: string): WithParts[] {
-    const messages = api.state.session.messages(sessionID)
-    const withParts = filterMessages(
-        messages.map((info) => ({
-            info,
-            parts: api.state.part(info.id),
-        })) as unknown as WithParts[],
-    )
-    return withParts.sort((left, right) => left.info.time.created - right.info.time.created)
+export async function sessionMessages(api: TuiApi, sessionID: string): Promise<WithParts[]> {
+    let messages: WithParts[]
+    try {
+        messages = await fetchSessionMessages(api.client as unknown as SdkClient, sessionID)
+    } catch {
+        messages = filterMessages(
+            api.state.session.messages(sessionID).map((info) => ({
+                info,
+                parts: api.state.part(info.id),
+            })) as unknown as WithParts[],
+        )
+    }
+    return messages.sort((left, right) => left.info.time.created - right.info.time.created)
 }
 
 export async function buildSessionState(
@@ -70,7 +76,7 @@ export async function loadSessionData(api: TuiApi, config: PluginConfig) {
     const sessionID = activeSessionID(api)
     if (!sessionID) return undefined
 
-    const messages = sessionMessages(api, sessionID)
+    const messages = await sessionMessages(api, sessionID)
     const state = await buildSessionState(sessionID, messages, config)
     return { state, messages }
 }
