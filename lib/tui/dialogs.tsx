@@ -1,15 +1,20 @@
 /** @jsxImportSource @opentui/solid */
 
+import {
+    getActiveCompressionTargets,
+    type CompressionTarget,
+} from "../commands/compression-targets"
 import { compressPermission } from "../compress-permission"
 import { analyzeContextTokens } from "../commands/context"
 import type { PluginConfig } from "../config"
 import type { SessionState, WithParts } from "../state"
+import { getActiveSummaryTokenUsage } from "../state/utils"
 import { findOldestUncompressedSpan, getCurrentTokenUsage } from "../token-utils"
-import { formatTokenCount } from "../ui/utils"
+import { formatTokenCount, truncate } from "../ui/utils"
 import { TextAttributes } from "@opentui/core"
 import { formatDuration, formatRatio } from "./format"
-import { ActionRow, Card, DcpFrame, Metric, Progress, StatusPill } from "./ui"
-import type { StatsReport, TuiApi } from "./types"
+import { ActionButton, Card, DcpFrame, Metric, Progress } from "./ui"
+import type { StatsReport, Theme, TuiApi } from "./types"
 
 export function StatusDialog(props: {
     api: TuiApi
@@ -167,155 +172,113 @@ export function PanelDialog(props: {
     onDecompress: () => void
     onRecompress: () => void
     onCompress: () => void
+    onDecompressBlock: (blockId: number) => void
     onHelp: () => void
 }) {
     const theme = props.api.theme.current
     const canCompress = compressPermission(props.state, props.config) !== "deny"
-    let blockCount = 0
+    const manualEnabled = !!props.state.manualMode
+    const targets = getActiveCompressionTargets(props.state.prune.messages)
     let removedTokens = 0
-    let summaryTokens = 0
-    for (const blockId of props.state.prune.messages.activeBlockIds) {
-        const block = props.state.prune.messages.blocksById.get(blockId)
-        if (!block || !block.active) {
-            continue
-        }
-        blockCount++
-        removedTokens += block.compressedTokens
-        summaryTokens += block.summaryTokens
+    for (const target of targets) {
+        removedTokens += target.compressedTokens
     }
+    const summaryTokens = getActiveSummaryTokenUsage(props.state)
     const netSaved = removedTokens - summaryTokens
     const backlog = findOldestUncompressedSpan(props.state, props.messages)
     const currentTokens = getCurrentTokenUsage(props.state, props.messages)
+
     return (
-        <DcpFrame api={props.api} eyebrow="DCP">
-            <Card theme={theme} title="Views">
-                <box flexDirection="column" gap={1}>
-                    <ActionRow
-                        theme={theme}
-                        title="Context"
-                        detail="Token usage"
-                        onClick={props.onContext}
-                    />
-                    <ActionRow
-                        theme={theme}
-                        title="Stats"
-                        detail="Savings"
-                        onClick={props.onStats}
-                    />
-                </box>
+        <DcpFrame api={props.api} eyebrow="DCP" title="Compression Panel">
+            <box flexDirection="column">
+                <text fg={theme.text}>
+                    {`Blocks ${targets.length}  ·  Removed ~${formatTokenCount(removedTokens, true)}  ·  Summaries ~${formatTokenCount(summaryTokens, true)}  ·  Net ${netSaved >= 0 ? "-" : "+"}${formatTokenCount(Math.abs(netSaved), true)}`}
+                </text>
+                <text fg={theme.textMuted}>
+                    {`Context ~${formatTokenCount(currentTokens, true)}${backlog ? `  ·  Backlog ${backlog.startRef}..${backlog.endRef} (${backlog.messageCount} msgs, ~${formatTokenCount(backlog.tokens, true)})` : ""}`}
+                </text>
+            </box>
+            <Card
+                theme={theme}
+                title={`Active compressions (${targets.length}) - click to restore`}
+            >
+                {targets.length === 0 ? (
+                    <text fg={theme.textMuted}>No active compressions.</text>
+                ) : (
+                    <scrollbox height={6} scrollY={true}>
+                        {targets.map((target) => (
+                            <BlockRow
+                                theme={theme}
+                                target={target}
+                                onSelect={props.onDecompressBlock}
+                            />
+                        ))}
+                    </scrollbox>
+                )}
             </Card>
-            <Card theme={theme} title="Compression">
-                <Metric theme={theme} label="Active blocks" value={String(blockCount)} />
-                <Metric
-                    theme={theme}
-                    label="Removed (active)"
-                    value={`~${formatTokenCount(removedTokens, true)}`}
-                    hint="tokens"
-                />
-                <Metric
-                    theme={theme}
-                    label="Summaries (active)"
-                    value={`~${formatTokenCount(summaryTokens, true)}`}
-                    hint="tokens"
-                />
-                <Metric
-                    theme={theme}
-                    label="Net saved"
-                    value={`${netSaved < 0 ? "+" : "-"}${formatTokenCount(Math.abs(netSaved), true)}`}
-                    hint="tokens"
-                />
-                <Metric
-                    theme={theme}
-                    label="Uncompressed backlog"
-                    value={backlog ? `~${formatTokenCount(backlog.tokens, true)}` : "none"}
-                    hint={
-                        backlog
-                            ? `tokens (${backlog.startRef}..${backlog.endRef}, ${backlog.messageCount} msgs)`
-                            : "tokens"
-                    }
-                />
-                <Metric
-                    theme={theme}
-                    label="Current context"
-                    value={`~${formatTokenCount(currentTokens, true)}`}
-                    hint="tokens"
-                />
-            </Card>
-            <Card theme={theme} title="Actions">
-                <box flexDirection="column" gap={1}>
-                    <ActionRow
+            <box flexDirection="row" gap={1} flexWrap="wrap">
+                <ActionButton theme={theme} label="Context" onClick={props.onContext} />
+                <ActionButton theme={theme} label="Stats" onClick={props.onStats} />
+                <ActionButton theme={theme} label="Sweep" onClick={props.onSweep} />
+                {canCompress ? (
+                    <ActionButton theme={theme} label="Decompress" onClick={props.onDecompress} />
+                ) : null}
+                {canCompress ? (
+                    <ActionButton theme={theme} label="Recompress" onClick={props.onRecompress} />
+                ) : null}
+                {canCompress ? (
+                    <ActionButton
                         theme={theme}
-                        title="Sweep"
-                        detail="Prune tools since the last user message"
-                        onClick={props.onSweep}
+                        label="Compress"
+                        variant="primary"
+                        onClick={props.onCompress}
                     />
-                    {canCompress ? (
-                        <ActionRow
-                            theme={theme}
-                            title="Decompress"
-                            detail="Restore a compression"
-                            onClick={props.onDecompress}
-                        />
-                    ) : null}
-                    {canCompress ? (
-                        <ActionRow
-                            theme={theme}
-                            title="Recompress"
-                            detail="Re-apply a restored compression"
-                            onClick={props.onRecompress}
-                        />
-                    ) : null}
-                    {canCompress ? (
-                        <ActionRow
-                            theme={theme}
-                            title="Compress"
-                            detail="Ask the model to compress now"
-                            onClick={props.onCompress}
-                        />
-                    ) : null}
-                    <ActionRow
-                        theme={theme}
-                        title="Help"
-                        detail="Show DCP commands"
-                        onClick={props.onHelp}
-                    />
-                </box>
-            </Card>
-            <Card theme={theme} title="Session State">
-                <ManualModeToggle api={props.api} state={props.state} onToggle={props.onManual} />
-                <StatusPill
+                ) : null}
+                <ActionButton
                     theme={theme}
-                    label="Compression command"
-                    value={canCompress ? "enabled" : "disabled"}
-                    accent={canCompress ? "success" : "warning"}
+                    label={manualEnabled ? "Manual: on" : "Manual: off"}
+                    variant={manualEnabled ? "primary" : "muted"}
+                    onClick={() => props.onManual(!manualEnabled)}
                 />
-            </Card>
+                <ActionButton theme={theme} label="Help" onClick={props.onHelp} />
+            </box>
         </DcpFrame>
     )
 }
 
-function ManualModeToggle(props: {
-    api: TuiApi
-    state: SessionState
-    onToggle: (enabled: boolean) => void
+function BlockRow(props: {
+    theme: Theme
+    target: CompressionTarget
+    onSelect: (blockId: number) => void
 }) {
-    const theme = props.api.theme.current
-    const enabled = !!props.state.manualMode
-    const track = enabled ? theme.success : theme.error
+    const target = props.target
+    const topic = (target.topic || "(no topic)").replace(/\s+/g, " ").trim()
+    const runLabel = target.grouped
+        ? `#${target.runId} x${target.blocks.length}`
+        : `#${target.runId}`
     return (
-        <box flexDirection="row" justifyContent="space-between" paddingLeft={1} paddingRight={1}>
-            <box width={22}>
-                <text fg={theme.primary} attributes={TextAttributes.BOLD}>
-                    Manual mode
+        <box
+            flexDirection="row"
+            gap={1}
+            paddingLeft={1}
+            paddingRight={1}
+            onMouseUp={() => props.onSelect(target.displayId)}
+        >
+            <box width={5}>
+                <text fg={props.theme.primary} attributes={TextAttributes.BOLD}>
+                    {`b${target.displayId}`}
                 </text>
             </box>
-            <box
-                backgroundColor={track}
-                paddingLeft={1}
-                paddingRight={1}
-                onMouseUp={() => props.onToggle(!enabled)}
-            >
-                <text fg={theme.background}>{enabled ? "   ■" : "■   "}</text>
+            <box width={8}>
+                <text
+                    fg={props.theme.textMuted}
+                >{`~${formatTokenCount(target.compressedTokens, true)}`}</text>
+            </box>
+            <box width={9}>
+                <text fg={props.theme.textMuted}>{runLabel}</text>
+            </box>
+            <box flexGrow={1}>
+                <text fg={props.theme.text}>{truncate(topic, 48)}</text>
             </box>
         </box>
     )

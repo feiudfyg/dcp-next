@@ -1,10 +1,15 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { PluginConfig } from "../config"
+import {
+    getActiveCompressionTargets,
+    getRecompressibleCompressionTargets,
+} from "../commands/compression-targets"
 import { handleDecompressCommand } from "../commands/decompress"
 import { handleHelpCommand } from "../commands/help"
 import { handleRecompressCommand } from "../commands/recompress"
 import { handleSweepCommand } from "../commands/sweep"
+import { formatTokenCount } from "../ui/utils"
 import { loadSessionData, logger } from "./data"
 import { openPanelModal, showDialog, showError, showStatusDialog } from "./modals"
 import type { TuiApi } from "./types"
@@ -60,43 +65,76 @@ export function runHelp(api: TuiApi, config: PluginConfig) {
 
 export function runDecompress(api: TuiApi, config: PluginConfig) {
     void withSession(api, config, "Decompress", async (data) => {
+        const targets = getActiveCompressionTargets(data.state.prune.messages)
+        if (targets.length === 0) {
+            showStatusDialog(api, "Decompress", "DCP", "No active compressions to restore.")
+            return
+        }
         showDialog(api, () =>
-            api.ui.DialogPrompt({
+            api.ui.DialogSelect({
                 title: "Decompress a compression",
-                placeholder: "compression number, e.g. 7",
-                onConfirm: (value) => {
+                options: targets.map((target) => ({
+                    title: `b${target.displayId}  ${target.topic.replace(/\s+/g, " ").trim() || "(no topic)"}`,
+                    value: String(target.displayId),
+                    description: `~${formatTokenCount(target.compressedTokens)} · Compression #${target.runId}${target.grouped ? ` (${target.blocks.length} messages)` : ""}`,
+                })),
+                onSelect: (option) => {
                     void applyBlockAction(
                         api,
                         config,
                         data,
                         "Decompress",
-                        value.trim(),
+                        String(option.value),
                         handleDecompressCommand,
                     )
                 },
-                onCancel: () => openPanelModal(api, config),
             }),
+        )
+    })
+}
+
+export function runDecompressBlock(api: TuiApi, config: PluginConfig, blockId: number) {
+    void withSession(api, config, "Decompress", async (data) => {
+        await applyBlockAction(
+            api,
+            config,
+            data,
+            "Decompress",
+            String(blockId),
+            handleDecompressCommand,
         )
     })
 }
 
 export function runRecompress(api: TuiApi, config: PluginConfig) {
     void withSession(api, config, "Recompress", async (data) => {
+        const availableMessageIds = new Set(data.messages.map((message) => message.info.id))
+        const targets = getRecompressibleCompressionTargets(
+            data.state.prune.messages,
+            availableMessageIds,
+        )
+        if (targets.length === 0) {
+            showStatusDialog(api, "Recompress", "DCP", "No decompressed compressions to re-apply.")
+            return
+        }
         showDialog(api, () =>
-            api.ui.DialogPrompt({
+            api.ui.DialogSelect({
                 title: "Recompress a compression",
-                placeholder: "compression number, e.g. 7",
-                onConfirm: (value) => {
+                options: targets.map((target) => ({
+                    title: `b${target.displayId}  ${target.topic.replace(/\s+/g, " ").trim() || "(no topic)"}`,
+                    value: String(target.displayId),
+                    description: `~${formatTokenCount(target.compressedTokens)} · Compression #${target.runId}${target.grouped ? ` (${target.blocks.length} messages)` : ""}`,
+                })),
+                onSelect: (option) => {
                     void applyBlockAction(
                         api,
                         config,
                         data,
                         "Recompress",
-                        value.trim(),
+                        String(option.value),
                         handleRecompressCommand,
                     )
                 },
-                onCancel: () => openPanelModal(api, config),
             }),
         )
     })

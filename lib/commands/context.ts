@@ -92,29 +92,26 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
     }
 
     let firstAssistant: AssistantMessage | undefined
-    for (const msg of messages) {
-        if (msg.info.role === "assistant") {
-            const assistantInfo = msg.info as AssistantMessage
-            if (
-                assistantInfo.tokens?.input > 0 ||
-                assistantInfo.tokens?.cache?.read > 0 ||
-                assistantInfo.tokens?.cache?.write > 0
-            ) {
-                firstAssistant = assistantInfo
-                break
-            }
-        }
-    }
-
+    let firstCreated = Number.POSITIVE_INFINITY
     let lastAssistant: AssistantMessage | undefined
-    for (let i = messages.length - 1; i >= 0; i--) {
-        const msg = messages[i]
-        if (msg.info.role === "assistant") {
-            const assistantInfo = msg.info as AssistantMessage
-            if (assistantInfo.tokens?.output > 0) {
-                lastAssistant = assistantInfo
-                break
-            }
+    let lastCreated = Number.NEGATIVE_INFINITY
+    for (const msg of messages) {
+        if (msg.info.role !== "assistant") {
+            continue
+        }
+        const assistantInfo = msg.info as AssistantMessage
+        const created = assistantInfo.time?.created ?? 0
+        const hasInput =
+            (assistantInfo.tokens?.input || 0) > 0 ||
+            (assistantInfo.tokens?.cache?.read || 0) > 0 ||
+            (assistantInfo.tokens?.cache?.write || 0) > 0
+        if (hasInput && created < firstCreated) {
+            firstAssistant = assistantInfo
+            firstCreated = created
+        }
+        if ((assistantInfo.tokens?.output || 0) > 0 && created > lastCreated) {
+            lastAssistant = assistantInfo
+            lastCreated = created
         }
     }
 
@@ -124,7 +121,7 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
     const toolInputParts: string[] = []
     const toolOutputParts: string[] = []
     let firstUserText = ""
-    let foundFirstUser = false
+    let firstUserCreated = Number.POSITIVE_INFINITY
     const allToolIds = new Set<string>()
     const activeToolIds = new Set<string>()
     const prunedByMessageToolIds = new Set<string>()
@@ -173,16 +170,22 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
                 !isIgnoredUser
             ) {
                 const textPart = part as TextPart
-                const text = textPart.text || ""
-                userTextParts.push(text)
-                if (!foundFirstUser) {
-                    firstUserText += text
-                }
+                userTextParts.push(textPart.text || "")
             }
         }
 
-        if (msg.info.role === "user" && !isIgnoredUser && !foundFirstUser) {
-            foundFirstUser = true
+        if (msg.info.role === "user" && !isIgnoredUser && !isCompacted) {
+            const created = msg.info.time?.created ?? 0
+            if (created < firstUserCreated) {
+                firstUserCreated = created
+                let text = ""
+                for (const part of parts) {
+                    if (part.type === "text") {
+                        text += (part as TextPart).text || ""
+                    }
+                }
+                firstUserText = text
+            }
         }
     }
 

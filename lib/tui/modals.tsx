@@ -5,7 +5,14 @@ import type { PluginConfig } from "../config"
 import { saveManualModeSetting } from "../state/persistence"
 import { loadSessionData, logger } from "./data"
 import { ContextDialog, PanelDialog, StatsDialog, StatusDialog } from "./dialogs"
-import { runCompress, runDecompress, runHelp, runRecompress, runSweep } from "./actions"
+import {
+    runCompress,
+    runDecompress,
+    runDecompressBlock,
+    runHelp,
+    runRecompress,
+    runSweep,
+} from "./actions"
 import type { TuiApi } from "./types"
 
 export function showDialog(api: TuiApi, render: () => any) {
@@ -76,6 +83,7 @@ export function openPanelModal(api: TuiApi, config: PluginConfig) {
                 onDecompress={() => runDecompress(api, config)}
                 onRecompress={() => runRecompress(api, config)}
                 onCompress={() => runCompress(api, config)}
+                onDecompressBlock={(blockId) => runDecompressBlock(api, config, blockId)}
                 onHelp={() => runHelp(api, config)}
             />
         ))

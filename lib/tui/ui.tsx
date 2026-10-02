@@ -14,7 +14,7 @@ export function DcpFrame(props: {
 }) {
     const theme = props.api.theme.current
     return (
-        <box paddingLeft={3} paddingRight={3} paddingBottom={1} gap={1}>
+        <box paddingLeft={2} paddingRight={2} paddingBottom={1} gap={1}>
             <box flexDirection="row" justifyContent="space-between">
                 <box flexDirection="column">
                     <text fg={theme.primary} attributes={TextAttributes.BOLD}>
@@ -82,12 +82,11 @@ export function Card(props: { theme: Theme; title: string; children: JSX.Element
             flexDirection="column"
             paddingLeft={2}
             paddingRight={2}
-            paddingTop={1}
             paddingBottom={1}
             backgroundColor={props.theme.backgroundElement}
             border={["left"]}
             borderColor={accent}
-            gap={1}
+            gap={0}
         >
             <text fg={accent} attributes={TextAttributes.BOLD}>
                 {props.title}
@@ -183,6 +182,27 @@ export function StatusPill(props: {
             </box>
             <text fg={accent} attributes={TextAttributes.BOLD}>
                 {props.value}
+            </text>
+        </box>
+    )
+}
+
+export function ActionButton(props: {
+    theme: Theme
+    label: string
+    variant?: "muted" | "primary"
+    onClick: () => void
+}) {
+    const primary = props.variant === "primary"
+    return (
+        <box
+            paddingLeft={1}
+            paddingRight={1}
+            backgroundColor={primary ? props.theme.primary : props.theme.backgroundElement}
+            onMouseUp={props.onClick}
+        >
+            <text fg={primary ? props.theme.selectedListItemText : props.theme.text}>
+                {props.label}
             </text>
         </box>
     )

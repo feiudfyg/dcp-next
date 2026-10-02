@@ -26,12 +26,13 @@ export function activeSessionID(api: TuiApi): string | undefined {
 
 export function sessionMessages(api: TuiApi, sessionID: string): WithParts[] {
     const messages = api.state.session.messages(sessionID)
-    return filterMessages(
+    const withParts = filterMessages(
         messages.map((info) => ({
             info,
             parts: api.state.part(info.id),
         })) as unknown as WithParts[],
     )
+    return withParts.sort((left, right) => left.info.time.created - right.info.time.created)
 }
 
 export async function buildSessionState(
