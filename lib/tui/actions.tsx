@@ -6,11 +6,11 @@ import {
     getRecompressibleCompressionTargets,
 } from "../commands/compression-targets"
 import { handleDecompressCommand } from "../commands/decompress"
-import { handleHelpCommand } from "../commands/help"
 import { handleRecompressCommand } from "../commands/recompress"
 import { handleSweepCommand } from "../commands/sweep"
 import { formatTokenCount } from "../ui/utils"
 import { loadSessionData, logger } from "./data"
+import { HelpDialog } from "./dialogs"
 import { openPanelModal, showDialog, showError, showStatusDialog } from "./modals"
 import type { TuiApi } from "./types"
 
@@ -47,19 +47,31 @@ async function withSession(
 
 export function runSweep(api: TuiApi, config: PluginConfig) {
     void withSession(api, config, "Sweep", async (data) => {
+        const before = data.state.prune.tools.size
         await handleSweepCommand({
             ...actionContext(api, config, data),
             args: [],
             workingDirectory: api.state.path.directory,
         })
-        openPanelModal(api, config)
+        const pruned = data.state.prune.tools.size - before
+        const message =
+            pruned > 0
+                ? `Pruned ${pruned} tool output${pruned === 1 ? "" : "s"} since the last user message.`
+                : "Nothing to prune since the last user message."
+        showStatusDialog(api, "Sweep", "DCP", message, () => openPanelModal(api, config))
     })
 }
 
 export function runHelp(api: TuiApi, config: PluginConfig) {
     void withSession(api, config, "Help", async (data) => {
-        await handleHelpCommand(actionContext(api, config, data))
-        openPanelModal(api, config)
+        showDialog(api, () => (
+            <HelpDialog
+                api={api}
+                state={data.state}
+                config={config}
+                onBack={() => openPanelModal(api, config)}
+            />
+        ))
     })
 }
 

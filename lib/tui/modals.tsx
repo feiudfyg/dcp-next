@@ -20,9 +20,15 @@ export function showDialog(api: TuiApi, render: () => any) {
     api.ui.dialog.replace(render)
 }
 
-export function showStatusDialog(api: TuiApi, title: string, eyebrow: string, message: string) {
+export function showStatusDialog(
+    api: TuiApi,
+    title: string,
+    eyebrow: string,
+    message: string,
+    onBack?: () => void,
+) {
     showDialog(api, () => (
-        <StatusDialog api={api} title={title} eyebrow={eyebrow} message={message} />
+        <StatusDialog api={api} title={title} eyebrow={eyebrow} message={message} onBack={onBack} />
     ))
 }
 

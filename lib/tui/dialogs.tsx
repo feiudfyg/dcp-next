@@ -6,6 +6,7 @@ import {
 } from "../commands/compression-targets"
 import { compressPermission } from "../compress-permission"
 import { analyzeContextTokens } from "../commands/context"
+import { formatHelpMessage } from "../commands/help"
 import type { PluginConfig } from "../config"
 import type { SessionState, WithParts } from "../state"
 import { getActiveSummaryTokenUsage } from "../state/utils"
@@ -22,12 +23,32 @@ export function StatusDialog(props: {
     title: string
     eyebrow: string
     message: string
+    onBack?: () => void
 }) {
     return (
-        <DcpFrame api={props.api} title={props.title} eyebrow={props.eyebrow}>
+        <DcpFrame api={props.api} title={props.title} eyebrow={props.eyebrow} onBack={props.onBack}>
             <box paddingTop={1} paddingBottom={1}>
                 <text fg={props.api.theme.current.textMuted}>{props.message}</text>
             </box>
+        </DcpFrame>
+    )
+}
+
+export function HelpDialog(props: {
+    api: TuiApi
+    state: SessionState
+    config: PluginConfig
+    onBack: () => void
+}) {
+    const theme = props.api.theme.current
+    const message = formatHelpMessage(props.state, props.config)
+    return (
+        <DcpFrame api={props.api} title="Help" eyebrow="DCP" onBack={props.onBack}>
+            <Card theme={theme} title="Commands">
+                <scrollbox height={14} scrollY={true}>
+                    <text fg={theme.text}>{message}</text>
+                </scrollbox>
+            </Card>
         </DcpFrame>
     )
 }
