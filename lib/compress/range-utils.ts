@@ -151,19 +151,25 @@ export function validateSummaryPlaceholders(
     startReference: BoundaryReference,
     endReference: BoundaryReference,
     summaryByBlockId: Map<number, CompressionBlock>,
+    replaceBlockIds: number[] = [],
 ): number[] {
+    const replaceSeen = new Set<number>(replaceBlockIds)
     const boundaryOptionalIds = new Set<number>()
     if (startReference.kind === "compressed-block") {
         if (startReference.blockId === undefined) {
             throw new Error("Failed to map boundary matches back to raw messages")
         }
-        boundaryOptionalIds.add(startReference.blockId)
+        if (!replaceSeen.has(startReference.blockId)) {
+            boundaryOptionalIds.add(startReference.blockId)
+        }
     }
     if (endReference.kind === "compressed-block") {
         if (endReference.blockId === undefined) {
             throw new Error("Failed to map boundary matches back to raw messages")
         }
-        boundaryOptionalIds.add(endReference.blockId)
+        if (!replaceSeen.has(endReference.blockId)) {
+            boundaryOptionalIds.add(endReference.blockId)
+        }
     }
 
     const strictRequiredIds = requiredBlockIds.filter((id) => !boundaryOptionalIds.has(id))
@@ -175,8 +181,9 @@ export function validateSummaryPlaceholders(
         const isKnown = summaryByBlockId.has(placeholder.blockId)
         const isRequired = requiredSet.has(placeholder.blockId)
         const isDuplicate = keptPlaceholderIds.has(placeholder.blockId)
+        const isReplaced = replaceSeen.has(placeholder.blockId)
 
-        if (isKnown && isRequired && !isDuplicate) {
+        if (isKnown && isRequired && !isDuplicate && !isReplaced) {
             validPlaceholders.push(placeholder)
             keptPlaceholderIds.add(placeholder.blockId)
         }
@@ -194,11 +201,13 @@ export function injectBlockPlaceholders(
     summaryByBlockId: Map<number, CompressionBlock>,
     startReference: BoundaryReference,
     endReference: BoundaryReference,
+    replaceBlockIds: number[] = [],
 ): InjectedSummaryResult {
     let cursor = 0
     let expanded = summary
     const consumed: number[] = []
     const consumedSeen = new Set<number>()
+    const dropSeen = new Set<number>(replaceBlockIds)
 
     if (placeholders.length > 0) {
         expanded = ""
@@ -228,6 +237,7 @@ export function injectBlockPlaceholders(
         summaryByBlockId,
         consumed,
         consumedSeen,
+        dropSeen,
     )
     expanded = injectBoundarySummary(
         expanded,
@@ -236,6 +246,7 @@ export function injectBlockPlaceholders(
         summaryByBlockId,
         consumed,
         consumedSeen,
+        dropSeen,
     )
 
     return {
@@ -313,21 +324,13 @@ export function parseReplaceBlockIds(entry: CompressRangeEntry): number[] {
 export function validateReplaceBlockIds(
     replaceBlockIds: number[],
     requiredBlockIds: number[],
-    missingBlockIds: number[],
 ): void {
     const required = new Set(requiredBlockIds)
-    const missing = new Set(missingBlockIds)
 
     for (const blockId of replaceBlockIds) {
         if (!required.has(blockId)) {
             throw new Error(
                 `replaceBlockIds lists b${blockId}, which is not a prior block inside the selected range.`,
-            )
-        }
-
-        if (!missing.has(blockId)) {
-            throw new Error(
-                `b${blockId} is both referenced by a (bN) placeholder and listed in replaceBlockIds. Keep it or replace it, not both.`,
             )
         }
     }
@@ -353,11 +356,15 @@ function injectBoundarySummary(
     summaryByBlockId: Map<number, CompressionBlock>,
     consumed: number[],
     consumedSeen: Set<number>,
+    dropBlockIds: Set<number>,
 ): string {
     if (reference.kind !== "compressed-block" || reference.blockId === undefined) {
         return summary
     }
     if (consumedSeen.has(reference.blockId)) {
+        return summary
+    }
+    if (dropBlockIds.has(reference.blockId)) {
         return summary
     }
 

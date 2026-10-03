@@ -4,8 +4,11 @@ import type { CompressionBlock } from "../lib/state"
 import { wrapCompressedSummary } from "../lib/compress/state"
 import {
     appendMissingBlockSummaries,
+    injectBlockPlaceholders,
+    parseBlockPlaceholders,
     parseReplaceBlockIds,
     validateReplaceBlockIds,
+    validateSummaryPlaceholders,
 } from "../lib/compress/range-utils"
 
 function makeBlock(blockId: number, body: string): CompressionBlock {
@@ -86,8 +89,50 @@ test("parseReplaceBlockIds rejects invalid refs", () => {
     )
 })
 
-test("validateReplaceBlockIds rejects blocks outside the range or kept by placeholder", () => {
-    assert.throws(() => validateReplaceBlockIds([9], [2, 3], [2, 3]), /not a prior block/)
-    assert.throws(() => validateReplaceBlockIds([2], [2, 3], [3]), /both referenced/)
-    assert.doesNotThrow(() => validateReplaceBlockIds([3], [2, 3], [3]))
+test("validateReplaceBlockIds only requires the block to be inside the range", () => {
+    assert.throws(() => validateReplaceBlockIds([9], [2, 3]), /not a prior block/)
+    assert.doesNotThrow(() => validateReplaceBlockIds([2], [2, 3]))
+    assert.doesNotThrow(() => validateReplaceBlockIds([3], [2, 3]))
+})
+
+test("a bN used as both boundary and replaceBlockIds is replaced, not kept", () => {
+    const summaryByBlockId = new Map<number, CompressionBlock>([[2, makeBlock(2, "OLD-SUMMARY")]])
+    const boundary = {
+        kind: "compressed-block" as const,
+        rawIndex: 0,
+        blockId: 2,
+        anchorMessageId: "anchor-2",
+    }
+
+    const parsed = parseBlockPlaceholders("new summary")
+    const missingBlockIds = validateSummaryPlaceholders(
+        parsed,
+        [2],
+        boundary,
+        boundary,
+        summaryByBlockId,
+        [2],
+    )
+    assert.deepEqual(missingBlockIds, [2])
+
+    const injected = injectBlockPlaceholders(
+        "new summary",
+        parsed,
+        summaryByBlockId,
+        boundary,
+        boundary,
+        [2],
+    )
+    assert.equal(injected.expandedSummary, "new summary")
+    assert.deepEqual(injected.consumedBlockIds, [])
+
+    const final = appendMissingBlockSummaries(
+        injected.expandedSummary,
+        missingBlockIds,
+        summaryByBlockId,
+        injected.consumedBlockIds,
+        [2],
+    )
+    assert.doesNotMatch(final.expandedSummary, /OLD-SUMMARY/)
+    assert.deepEqual(final.consumedBlockIds, [2])
 })

@@ -12,7 +12,8 @@ THE FORMAT OF COMPRESS
     {
       startId: string,     // Boundary ID at range start: mNNNN or bN
       endId: string,       // Boundary ID at range end: mNNNN or bN
-      summary: string      // Complete technical summary replacing all content in range
+      summary: string,     // Complete technical summary replacing all content in range
+      replaceBlockIds?: string[]  // Prior blocks to REPLACE (drop their old summaries), e.g. ["b7"]. Only for blocks we are deliberately re-compressing.
     }
   ]
 }
@@ -24,18 +25,32 @@ PRIOR COMPRESSED BLOCKS
 Previously compressed blocks are normal compressible content. They are not off-limits.
 We may use \`bN\` as range boundaries, include prior blocks in a new range, and
 re-compress them. We do not limit compression to the newest uncompressed messages.
-Prior block summaries are visible in context as \`[Compressed conversation section]\`.`
+Prior block summaries are visible in context as \`[Compressed conversation section]\`.
+
+By default a prior block covered by a range is KEPT: its stored summary stays (expanded
+from its \`(bN)\` placeholder, or appended automatically if we omit it).`
 
 export const RANGE_PRIOR_SUMMARY_DROP_EXTENSION = `
 REPLACING PRIOR SUMMARIES
 
-We re-compress an earlier summary by listing its block ID in \`replaceBlockIds\` for
-that range entry. A listed block is removed, so our new summary MUST cover its
-essential content in condensed form.
+A prior block covered by a range is kept by default. To DROP a prior summary and replace
+it with ours, list its block ID in \`replaceBlockIds\` for that range entry. Listed blocks
+are removed, so our new summary MUST cover their essential content in condensed form.
 
-For every required prior block we do not list, we include its \`(bN)\` placeholder to
-keep it. Omitted unlisted blocks are preserved automatically, so omission alone never
-loses information.`
+\`replaceBlockIds\` is authoritative. A block that is inside the range AND listed is
+REPLACED, even when the range boundary is that same \`bN\`. We never need to avoid using a
+\`bN\` as a boundary when we are replacing it, and we must not write its \`(bN)\` placeholder.
+
+Correct - replace the summary of a block we just compressed:
+  { "startId": "b7", "endId": "b7", "replaceBlockIds": ["b7"], "summary": "<new complete summary>" }
+
+Correct - keep a prior block while writing a new summary around it (do NOT list it):
+  { "startId": "b7", "endId": "m0200", "summary": "<new material> ... (b7) ... <new material>" }
+
+How to choose:
+- Replacing a block's summary -> list it in \`replaceBlockIds\`.
+- Keeping a block (even nested) -> do NOT list it; it is preserved automatically.
+- Every listed block must be inside the selected range, e.g. use the block's own \`bN\` as both boundaries.`
 
 export const RANGE_PRIOR_SUMMARY_PRESERVE_EXTENSION = `
 PRESERVING PRIOR SUMMARIES

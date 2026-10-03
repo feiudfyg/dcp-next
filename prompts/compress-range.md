@@ -22,13 +22,22 @@ Compressed block IDs use the `bN` form (never `mNNNN`) and the same XML metadata
 Rules:
 
 - We reference each prior block we keep with its exact `(bN)` placeholder.
-- We list a prior block in `replaceBlockIds` only to replace it; unlisted omitted blocks are kept automatically.
+- Unlisted omitted blocks are kept automatically; we only list a block in `replaceBlockIds` to replace it.
 - We do not invent placeholders for blocks outside the range.
 - We treat `(bN)` placeholders as RESERVED TOKENS. We emit `(bN)` text only as intentional placeholders.
 - When we mention a block in prose, we write plain text like `compressed bN`.
 - We keep every `(bN)` placeholder unique and inside the selected range.
 
 Placeholders are semantic references. The tool replaces them with the full stored compressed block content.
+
+REPLACING A PRIOR SUMMARY
+A prior block covered by a range is kept by default. To drop its stored summary and replace it, we list
+its block ID in `replaceBlockIds` for that range entry; listed blocks are removed, so our new summary must
+cover their content. `replaceBlockIds` is authoritative: a block that is inside the range and listed is
+replaced even when the range boundary is that same `bN`. We must not also write its `(bN)` placeholder.
+
+Example - replace the summary of a block we just compressed:
+{ "startId": "b7", "endId": "b7", "replaceBlockIds": ["b7"], "summary": "<new complete summary>" }
 
 FLOW PRESERVATION
 We write the summary so it still reads correctly after placeholder expansion.

@@ -113,21 +113,18 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
 
             for (const plan of resolvedPlans) {
                 const parsedPlaceholders = parseBlockPlaceholders(plan.entry.summary)
+                const replaceBlockIds = ctx.config.compress.allowPriorSummaryDrop
+                    ? parseReplaceBlockIds(plan.entry)
+                    : []
+                validateReplaceBlockIds(replaceBlockIds, plan.selection.requiredBlockIds)
+
                 const missingBlockIds = validateSummaryPlaceholders(
                     parsedPlaceholders,
                     plan.selection.requiredBlockIds,
                     plan.selection.startReference,
                     plan.selection.endReference,
                     searchContext.summaryByBlockId,
-                )
-
-                const replaceBlockIds = ctx.config.compress.allowPriorSummaryDrop
-                    ? parseReplaceBlockIds(plan.entry)
-                    : []
-                validateReplaceBlockIds(
                     replaceBlockIds,
-                    plan.selection.requiredBlockIds,
-                    missingBlockIds,
                 )
 
                 const injected = injectBlockPlaceholders(
@@ -136,6 +133,7 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                     searchContext.summaryByBlockId,
                     plan.selection.startReference,
                     plan.selection.endReference,
+                    replaceBlockIds,
                 )
 
                 const summaryWithUsers = appendProtectedUserMessages(
