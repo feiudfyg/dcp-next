@@ -45,23 +45,31 @@ function compressToolPart(summary: string) {
     } as any
 }
 
-test("pruneCompressToolCalls strips the summary payload from active block origins", () => {
+test("pruneCompressToolCalls hides the summary payload of older active block origins", () => {
     const state = createSessionState()
     state.prune.messages.activeBlockIds.add(1)
-    state.prune.messages.blocksById.set(1, makeBlock(1, "msg-compress"))
+    state.prune.messages.activeBlockIds.add(2)
+    state.prune.messages.blocksById.set(1, makeBlock(1, "msg-old"))
+    state.prune.messages.blocksById.set(2, makeBlock(2, "msg-new"))
 
     const messages: WithParts[] = [
         {
-            info: { id: "msg-compress", role: "assistant" } as WithParts["info"],
-            parts: [compressToolPart("BIG SUMMARY")],
+            info: { id: "msg-old", role: "assistant" } as WithParts["info"],
+            parts: [compressToolPart("OLD SUMMARY")],
+        },
+        {
+            info: { id: "msg-new", role: "assistant" } as WithParts["info"],
+            parts: [compressToolPart("NEW SUMMARY")],
         },
     ]
 
     pruneCompressToolCalls(state, messages)
 
-    const summary = messages[0]!.parts[0]!.state.input.content[0].summary
-    assert.notEqual(summary, "BIG SUMMARY")
-    assert.match(summary, /compress call args removed/)
+    const oldSummary = messages[0]!.parts[0]!.state.input.content[0].summary
+    assert.notEqual(oldSummary, "OLD SUMMARY")
+    assert.match(oldSummary, /compress call args hidden/)
+
+    assert.equal(messages[1]!.parts[0]!.state.input.content[0].summary, "NEW SUMMARY")
 })
 
 test("pruneCompressToolCalls leaves non-origin compress calls intact", () => {

@@ -123,8 +123,21 @@ export const pruneCompressToolCalls = (state: SessionState, messages: WithParts[
         return
     }
 
+    let latestOriginMessageId: string | undefined
+    for (let index = messages.length - 1; index >= 0; index--) {
+        const id = messages[index]?.info?.id
+        if (id !== undefined && originMessageIds.has(id)) {
+            latestOriginMessageId = id
+            break
+        }
+    }
+
     for (const msg of messages) {
         if (!originMessageIds.has(msg.info.id)) {
+            continue
+        }
+
+        if (msg.info.id === latestOriginMessageId) {
             continue
         }
 

@@ -33,6 +33,10 @@ export function formatCompressionResult(report: CompressionResultReport): string
             parts.push(`net ${formatSignedTokenAmount(outcome.netRemovedTokens)} tokens`)
             lines.push(`- b${outcome.blockId} "${outcome.topic}": ${parts.join(", ")}`)
         }
+
+        lines.push(
+            `The summaries are stored in those blocks; the compressed messages are removed from context and represented by the summaries shown as [Compressed conversation section]. Nothing is lost and no re-compress is needed to keep a block. If an earlier compress call shows its arguments hidden, that is only a display shortcut - the stored summary is the [Compressed conversation section].`,
+        )
     }
 
     const autoNested = outcomes.flatMap((outcome) => outcome.autoNestedBlockIds)

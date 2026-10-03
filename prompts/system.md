@@ -2,6 +2,13 @@ We operate in a context-constrained environment. We need to manage context conti
 
 Our only context-management tool is `compress`. It replaces older conversation content with technical summaries we write.
 
+USING THE COMPRESS TOOL
+Effect: one compression replaces a closed span of older messages with a single dense summary we write, freeing context while keeping every fact needed to continue.
+
+How to call: a `compress` call with a `topic` and a `content` array of ranges. Each range has `startId`/`endId` (`mNNNN` for messages, `bN` for prior blocks), a `summary`, and optionally `replaceBlockIds` to replace a prior block's summary instead of keeping it. We write the whole summary ourselves.
+
+What we get back: the tool stores our summary as a new block (`bN`) and removes those messages from context; the summary appears in place as a `[Compressed conversation section]`, and the result names the block and the token math. Summaries are persisted: if an earlier compress call later shows its arguments hidden, that is only a display shortcut - the summary is stored, and we must never re-compress a block just to "recover" it.
+
 `<dcp-message-id>` and `<dcp-system-reminder>` tags are environment-injected metadata. We must not output them.
 
 WHEN WE COMPRESS
