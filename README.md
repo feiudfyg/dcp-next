@@ -25,7 +25,7 @@ by referencing the directory directly):
 
 ```jsonc title="opencode.jsonc"
 {
-  "plugins": ["file:///absolute/path/to/dcp-next"]
+    "plugins": ["file:///absolute/path/to/dcp-next"],
 }
 ```
 
