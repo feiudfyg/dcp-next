@@ -4,7 +4,11 @@ import { createCompressMessageTool, createCompressRangeTool } from "./lib/compre
 import { Logger } from "./lib/logger"
 import { createSessionState } from "./lib/state"
 import { PromptStore } from "./lib/prompts/store"
-import { createCompressCommandExecutor, createContextHookHandler } from "./lib/hooks"
+import {
+    createCompressCommandExecutor,
+    createContextHookHandler,
+    createToolTimingHandlers,
+} from "./lib/hooks"
 import { type HostPermissionSnapshot } from "./lib/host-permissions"
 import type { Notify } from "./lib/ui/notification"
 
@@ -99,5 +103,9 @@ export default Plugin.define({
                 event.effect = config.compress.permission
             }
         })
+
+        const timing = createToolTimingHandlers(state, logger)
+        await context.tool.hook("execute.before", timing.before)
+        await context.tool.hook("execute.after", timing.after)
     },
 })

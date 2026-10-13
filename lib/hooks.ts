@@ -600,3 +600,71 @@ export function createCompressCommandExecutor(
         }
     }
 }
+
+export interface ToolExecuteBeforeEvent {
+    tool: string
+    sessionID?: string
+    messageID?: string
+    id?: string
+    agent?: string
+    input?: unknown
+}
+
+export interface ToolExecuteAfterEvent {
+    tool: string
+    sessionID?: string
+    messageID?: string
+    id?: string
+    agent?: string
+    status?: "completed" | "error"
+}
+
+/**
+ * v2 replacement for the v1 message.part.updated timing hook: measures how long
+ * the `compress` tool took and attaches the duration to the block it created.
+ */
+export function createToolTimingHandlers(state: SessionState, logger: Logger) {
+    const before = (event: ToolExecuteBeforeEvent): void => {
+        if (event.tool !== "compress") {
+            return
+        }
+        const messageId = String(event.messageID ?? "")
+        const callId = String(event.id ?? "")
+        if (!messageId || !callId) {
+            return
+        }
+        const key = buildCompressionTimingKey(messageId, callId)
+        if (!state.compressionTiming.startsByCallId.has(key)) {
+            state.compressionTiming.startsByCallId.set(key, Date.now())
+        }
+    }
+
+    const after = async (event: ToolExecuteAfterEvent): Promise<void> => {
+        if (event.tool !== "compress") {
+            return
+        }
+        const messageId = String(event.messageID ?? "")
+        const callId = String(event.id ?? "")
+        if (!messageId || !callId) {
+            return
+        }
+        const startedAt = consumeCompressionStart(state, messageId, callId)
+        if (typeof startedAt !== "number") {
+            return
+        }
+        const key = buildCompressionTimingKey(messageId, callId)
+        state.compressionTiming.pendingByCallId.set(key, {
+            messageId,
+            callId,
+            durationMs: Math.max(0, Date.now() - startedAt),
+        })
+        const updates = applyPendingCompressionDurations(state)
+        if (updates > 0) {
+            await saveSessionState(state, logger)
+        } else {
+            state.compressionTiming.pendingByCallId.delete(key)
+        }
+    }
+
+    return { before, after }
+}
