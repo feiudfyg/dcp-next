@@ -57,16 +57,25 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] Assistant tool-results emitted as `role:"tool"` messages.
 - [x] Opaque parts (media/compaction/effort) round-tripped (was data loss).
 - [x] Basic `run` end-to-end with a real compression.
-- [ ] Adapter unit tests (round-trip + correlation).
-- [ ] Role-aware request↔session alignment (tool-message safe).
-- [!] Compression duration/timing lost (v1 `event` hook removed).
-- [ ] Restore timing via `ctx.tool.hook("execute.before"/"execute.after")`.
-- [~] TUI ported but NOT runtime-tested (routes/dialogs/theme).
-- [ ] TUI adapter unit tests (`resolveTheme`, `createTuiApi`).
+- [x] Adapter unit tests (round-trip + correlation).
+- [x] Role-aware request↔session alignment (tool-message safe).
+- [x] Compression duration/timing restored via `ctx.tool.hook("execute.before"/"execute.after")`.
+- [x] System/effort control messages preserved verbatim (were coerced to `user`, breaking OpenAI Chat).
+- [x] TUI adapter unit tests (`resolveTheme`, `createTuiApi`) + `tui.tsx` setup smoke test.
+- [x] Isolated v2 E2E: compress → block with `durationMs`, follow-up turn rebuilds the pruned request.
 - [~] Host/agent permission snapshot not wired (agent-level deny ignored by nudges).
 - [ ] Long-session / compaction / subagent correlation not stress-tested.
 - [ ] `experimental.text.complete` hallucination stripping removed (minor).
 - Intentional removals: npm auto-update, secure-mode auth interceptor.
+
+## Sandbox model/auth (for E2E)
+
+- The free `opencode/big-pickle` model refuses outside the app; the sandbox needs a
+  real key via env: `DEEPSEEK_API_KEY` (the v2 `auth.json` format is not honoured).
+- Sandbox `opencode.json` defines `provider.deepseek.models.deepseek-flash` with
+  variants `max` and `medium`; tests run `-m deepseek/deepseek-flash#medium`.
+- Harness: `C:\Users\24635\AppData\Local\Temp\opencode\e2e-v2.ps1 -Phase {1,2}`
+  sets the key, runs the sandbox, then dumps DCP blocks (ct/st/durMs).
 
 ## Iteration plan (current)
 
@@ -88,3 +97,8 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - `ed799d0` source-loading (`verbatimModuleSyntax`, `import type`/`export type`),
   assistant tool-result split into `role:"tool"`.
 - `c9d3672` opaque part round-trip (media/compaction/effort preserved).
+- `f46c06b` role-aware request↔session alignment + adapter unit tests.
+- `51734f6` compression timing restored via tool execute hooks.
+- `e12a8cf` TUI adapter + setup wiring tests.
+- system/effort control messages skipped internally and re-inserted verbatim in
+  `internalToRequest` (fixes OpenAI Chat "only support text and media").

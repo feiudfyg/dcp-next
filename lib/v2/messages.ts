@@ -360,14 +360,17 @@ export function requestToInternal(
 
     for (let index = 0; index < requestMessages.length; index++) {
         const message = requestMessages[index]
-        const role: "user" | "assistant" = message.role === "assistant" ? "assistant" : "user"
 
-        if (message.role === "tool") {
-            // Tool-result transport message; the results were folded into the
-            // originating assistant message. It must not consume alignment.
+        if (message.role === "tool" || message.role === "system") {
+            // Tool-result transport messages and out-of-domain control messages
+            // (e.g. a system/effort message) are not modeled by DCP. Tool
+            // results are folded into the originating assistant message; system
+            // messages are re-emitted verbatim in internalToRequest. Neither
+            // consumes alignment.
             continue
         }
 
+        const role: "user" | "assistant" = message.role === "assistant" ? "assistant" : "user"
         let resolvedId: string | undefined =
             typeof message.id === "string" && message.id.length > 0 ? message.id : undefined
 
@@ -539,6 +542,54 @@ export function internalToRequest(
 
         if (toolResults.length > 0) {
             output.push({ role: "tool", content: toolResults })
+        }
+    }
+
+    // Re-insert out-of-domain control messages (system/effort) verbatim at their
+    // original relative position. DCP does not model them, so they are absent
+    // from the internal list and would otherwise be dropped from the request.
+    const outputIndexById = new Map<string, number>()
+    output.forEach((message, index) => {
+        if (typeof message.id === "string") {
+            outputIndexById.set(message.id, index)
+        }
+    })
+
+    const inserts: Array<{ index: number; order: number; message: RequestMessage }> = []
+    for (let i = 0; i < original.length; i++) {
+        const message = original[i]
+        if (message.role !== "system") {
+            continue
+        }
+
+        let predecessor = -1
+        for (let j = i - 1; j >= 0; j--) {
+            const id = original[j].id
+            if (typeof id === "string" && outputIndexById.has(id)) {
+                predecessor = outputIndexById.get(id)!
+                break
+            }
+        }
+        if (predecessor >= 0) {
+            inserts.push({ index: predecessor + 1, order: i, message })
+            continue
+        }
+
+        let successor = -1
+        for (let j = i + 1; j < original.length; j++) {
+            const id = original[j].id
+            if (typeof id === "string" && outputIndexById.has(id)) {
+                successor = outputIndexById.get(id)!
+                break
+            }
+        }
+        inserts.push({ index: successor >= 0 ? successor : output.length, order: i, message })
+    }
+
+    if (inserts.length > 0) {
+        inserts.sort((a, b) => b.index - a.index || b.order - a.order)
+        for (const insert of inserts) {
+            output.splice(insert.index, 0, insert.message)
         }
     }
 

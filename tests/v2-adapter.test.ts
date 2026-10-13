@@ -157,6 +157,32 @@ test("synthetic summary messages rebuild as fresh user messages", () => {
     assert.deepEqual(rebuilt[0].content, [{ type: "text", text: "SUMMARY" }])
 })
 
+test("system control messages are skipped internally and re-inserted verbatim", () => {
+    const request = [
+        { id: "m1", role: "user", content: [{ type: "text", text: "one" }] },
+        { id: "m2", role: "user", content: [{ type: "text", text: "two" }] },
+        { role: "system", content: [{ type: "effort", effort: "medium" }] },
+        { id: "m3", role: "user", content: [{ type: "text", text: "three" }] },
+    ]
+
+    const internal = requestToInternal(request, [], "ses")
+    assert.deepEqual(
+        internal.map((m) => m.info.id),
+        ["m1", "m2", "m3"],
+    )
+
+    const rebuilt = internalToRequest(internal, request)
+    assert.deepEqual(
+        rebuilt.map((m) => m.role),
+        ["user", "user", "system", "user"],
+    )
+    assert.deepEqual(rebuilt[2], request[2])
+    assert.deepEqual(
+        rebuilt.map((m) => m.id),
+        ["m1", "m2", undefined, "m3"],
+    )
+})
+
 test("normalizeSessionMessages keeps model-visible messages and marks compaction", () => {
     const raw = [
         { type: "user", id: "u", text: "hi", time: { created: 1 } },
