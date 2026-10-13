@@ -1,20 +1,16 @@
 import { getConfig, type PluginConfig } from "../config"
 import { Logger } from "../logger"
 import { assignMessageRefs } from "../message-ids"
-import { filterMessages } from "../messages/shape"
 import { createSessionState, type SessionState, type WithParts } from "../state"
 import { loadSessionState } from "../state/persistence"
 import { findLastCompactionTimestamp, loadPruneMap, loadPruneMessagesState } from "../state/utils"
+import { normalizeSessionMessages } from "../v2/messages"
 import type { TuiApi } from "./types"
 
 export const logger = new Logger(false)
 
 export function loadConfig(api: TuiApi): PluginConfig {
-    return getConfig({
-        client: api.client,
-        directory: api.state.path.directory,
-        worktree: api.state.path.worktree,
-    } as any)
+    return getConfig({ directory: api.state.path.directory })
 }
 
 let fallbackSessionID: string | undefined
@@ -34,92 +30,45 @@ export function activeSessionID(api: TuiApi): string | undefined {
     return fallbackSessionID
 }
 
-function readNextCursor(response: any, payload: any): string | undefined {
-    const headers = response?.response?.headers ?? response?.headers
-    if (headers) {
-        if (typeof headers.get === "function") {
-            const value = headers.get("x-next-cursor")
-            if (typeof value === "string" && value.length > 0) {
-                return value
-            }
-        }
-        const direct = headers["x-next-cursor"] ?? headers["X-Next-Cursor"]
-        if (typeof direct === "string" && direct.length > 0) {
-            return direct
-        }
-    }
-    const fromPayload = payload?.cursor ?? response?.cursor
-    if (typeof fromPayload === "string" && fromPayload.length > 0) {
-        return fromPayload
-    }
-    return undefined
-}
-
 async function fetchFullMessages(api: TuiApi, sessionID: string): Promise<WithParts[]> {
     const client = api.client as unknown as {
-        session: { messages: (options: unknown) => Promise<unknown> }
+        session?: { context?: (options: unknown) => Promise<unknown> }
+        message?: { list?: (options: unknown) => Promise<unknown> }
     }
-    const byId = new Map<string, unknown>()
-    let before: string | undefined
 
-    for (let page = 0; page < 500; page++) {
-        let response: any
-        try {
-            response = await client.session.messages({
-                sessionID,
-                limit: 200,
-                ...(before ? { before } : {}),
-            })
-        } catch {
-            break
-        }
-
-        const payload = response?.data ?? response
-        const items: any[] = Array.isArray(payload)
-            ? payload
-            : Array.isArray(payload?.items)
-              ? payload.items
-              : []
-        if (items.length === 0) {
-            break
-        }
-
-        let added = 0
-        for (const item of items) {
-            const id = item?.info?.id
-            if (typeof id === "string" && !byId.has(id)) {
-                byId.set(id, item)
-                added++
+    try {
+        if (client.session?.context) {
+            const raw = (await client.session.context({ sessionID })) as unknown[]
+            if (Array.isArray(raw) && raw.length > 0) {
+                return normalizeSessionMessages(raw, sessionID)
             }
         }
-
-        const cursor = readNextCursor(response, payload)
-        if (!cursor || cursor === before || added === 0) {
-            break
-        }
-        before = cursor
-        if (items.length < 200) {
-            break
-        }
+    } catch {
+        // fall through to message.list
     }
 
-    return filterMessages([...byId.values()])
-}
+    try {
+        if (client.message?.list) {
+            const response: any = await client.message.list({ sessionID })
+            const payload = response?.data ?? response
+            const items = Array.isArray(payload)
+                ? payload
+                : Array.isArray(payload?.items)
+                  ? payload.items
+                  : []
+            if (items.length > 0) {
+                return normalizeSessionMessages(items, sessionID)
+            }
+        }
+    } catch {
+        // no messages available
+    }
 
-export function fallbackSessionMessages(api: TuiApi, sessionID: string): WithParts[] {
-    return filterMessages(
-        api.state.session.messages(sessionID).map((info) => ({
-            info,
-            parts: api.state.part(info.id),
-        })) as unknown as WithParts[],
-    )
+    return []
 }
 
 export async function sessionMessages(api: TuiApi, sessionID: string): Promise<WithParts[]> {
-    let messages = await fetchFullMessages(api, sessionID)
-    if (messages.length === 0) {
-        messages = fallbackSessionMessages(api, sessionID)
-    }
+    const messages = await fetchFullMessages(api, sessionID)
     return messages.sort((left, right) => left.info.time.created - right.info.time.created)
 }
 
