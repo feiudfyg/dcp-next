@@ -1,7 +1,11 @@
-# Dynamic Context Pruning Plugin (local fork)
+# Dynamic Context Pruning Plugin (local fork, OpenCode v2)
 
 A detached, self-maintained fork of the OpenCode Dynamic Context Pruning plugin
 (`@local/opencode-dcp`).
+
+This branch targets **OpenCode v2** and the v2 plugin API (`@opencode/plugin`).
+It is self-contained: it does not depend on `@opencode-ai/*` and does not
+auto-update from any upstream registry.
 
 Automatically reduces token usage in OpenCode by managing conversation context.
 
@@ -16,9 +20,18 @@ npm install
 npm run build
 ```
 
-Then point OpenCode's `plugin` configuration at this local package (for example by
-installing the built directory into your OpenCode config, or referencing the checkout
-directly).
+Then point OpenCode's `plugins` configuration at this local checkout (for example
+by referencing the directory directly):
+
+```jsonc title="opencode.jsonc"
+{
+  "plugins": ["file:///absolute/path/to/dcp-next"]
+}
+```
+
+The package exposes the server plugin at `.` and the terminal UI plugin at
+`./tui`; OpenCode loads both automatically. OpenCode must be restarted after
+rebuilding so it picks up the new `dist/` and `tui.tsx`.
 
 ## How It Works
 
