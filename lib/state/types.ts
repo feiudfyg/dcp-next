@@ -55,6 +55,16 @@ export interface DcpFilePart {
     [key: string]: any
 }
 
+/**
+ * A content part DCP does not model (media, provider compaction, effort,
+ * provider-specific parts). It is carried through the pipeline verbatim so the
+ * request rebuild does not lose data.
+ */
+export interface DcpOpaquePart {
+    type: "opaque"
+    value: unknown
+}
+
 export type DcpPart =
     | DcpToolPart
     | DcpTextPart
@@ -62,6 +72,7 @@ export type DcpPart =
     | DcpStepStartPart
     | DcpStepFinishPart
     | DcpFilePart
+    | DcpOpaquePart
 
 export interface DcpModelRef {
     providerID?: string

@@ -276,17 +276,16 @@ export function normalizeSessionMessages(
     return messages
 }
 
-function requestPartToInternal(part: RequestContentPart): DcpPart | null {
+function requestPartToInternal(part: RequestContentPart): DcpPart {
     switch (part.type) {
         case "text":
             return { type: "text", text: String(part.text ?? "") }
         case "reasoning":
             return { type: "reasoning", text: String(part.text ?? "") }
-        case "media":
-        case "file":
-            return { type: "file" }
         default:
-            return null
+            // Media, provider compaction, effort, and provider-specific parts are
+            // preserved verbatim so the rebuild is lossless.
+            return { type: "opaque", value: part }
     }
 }
 
@@ -418,9 +417,7 @@ export function requestToInternal(
                 }
 
                 const converted = requestPartToInternal(part)
-                if (converted) {
-                    parts.push(converted)
-                }
+                parts.push(converted)
             }
         }
 
@@ -452,6 +449,8 @@ function internalPartToRequest(part: DcpPart): RequestContentPart[] {
             return [{ type: "text", text: part.text }]
         case "reasoning":
             return [{ type: "reasoning", text: part.text }]
+        case "opaque":
+            return [part.value as RequestContentPart]
         default:
             return []
     }
