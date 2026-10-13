@@ -63,9 +63,9 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] System/effort control messages preserved verbatim (were coerced to `user`, breaking OpenAI Chat).
 - [x] TUI adapter unit tests (`resolveTheme`, `createTuiApi`) + `tui.tsx` setup smoke test.
 - [x] Isolated v2 E2E: compress → block with `durationMs`, follow-up turn rebuilds the pruned request.
-- [~] Host/agent permission snapshot not wired (agent-level deny ignored by nudges).
+- [x] Host/agent compress permission synced from `context.agent.list()` (nudges respect agent deny).
 - [ ] Long-session / compaction / subagent correlation not stress-tested.
-- [ ] `experimental.text.complete` hallucination stripping removed (minor).
+- [ ] `experimental.text.complete` hallucination stripping removed (minor; no v2 equivalent).
 - Intentional removals: npm auto-update, secure-mode auth interceptor.
 
 ## Sandbox model/auth (for E2E)
@@ -102,3 +102,4 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - `e12a8cf` TUI adapter + setup wiring tests.
 - system/effort control messages skipped internally and re-inserted verbatim in
   `internalToRequest` (fixes OpenAI Chat "only support text and media").
+- `2bd03d2` agent permissions mapped into the host snapshot (v2 `agent.list()`).
