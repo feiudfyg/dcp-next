@@ -189,6 +189,10 @@ function assistantParts(content: unknown): DcpPart[] {
     return parts
 }
 
+function sessionRole(sm: SessionMessageLike): "user" | "assistant" {
+    return sm.type === "assistant" || sm.type === "compaction" ? "assistant" : "user"
+}
+
 function sessionInfo(
     sm: SessionMessageLike | undefined,
     id: string,
@@ -356,7 +360,13 @@ export function requestToInternal(
 
     for (let index = 0; index < requestMessages.length; index++) {
         const message = requestMessages[index]
-        const role = message.role === "assistant" ? "assistant" : "user"
+        const role: "user" | "assistant" = message.role === "assistant" ? "assistant" : "user"
+
+        if (message.role === "tool") {
+            // Tool-result transport message; the results were folded into the
+            // originating assistant message. It must not consume alignment.
+            continue
+        }
 
         let resolvedId: string | undefined =
             typeof message.id === "string" && message.id.length > 0 ? message.id : undefined
@@ -378,17 +388,14 @@ export function requestToInternal(
         }
 
         if (!resolvedId) {
+            while (pointer < ordered.length && sessionRole(ordered[pointer]) !== role) {
+                pointer++
+            }
             const candidate = ordered[pointer]
-            if (candidate && ordered.length === requestMessages.length) {
+            if (candidate) {
                 resolvedId = candidate.id
                 pointer++
             }
-        }
-
-        if (message.role === "tool") {
-            // Tool-result-only transport message; the results were folded into
-            // the originating assistant message below.
-            continue
         }
 
         const id = resolvedId ?? `req:${index}`
