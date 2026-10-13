@@ -1,20 +1,30 @@
 import type { SessionState, WithParts } from "../state"
 import { formatBlockRef, parseBoundaryId } from "../message-ids"
 import { isIgnoredUserMessage } from "../messages/query"
-import { filterMessages } from "../messages/shape"
 import { countAllMessageTokens } from "../token-utils"
 import type { BoundaryReference, SearchContext, SelectionResolution } from "./types"
 import type { SdkClient } from "../sdk-types"
+import { normalizeSessionMessages } from "../v2/messages"
+import { filterMessages } from "../messages/shape"
 
 export async function fetchSessionMessages(
     client: SdkClient,
     sessionId: string,
 ): Promise<WithParts[]> {
-    const response = await client.session.messages({
-        path: { id: sessionId },
-    })
-
-    return filterMessages(response?.data || response)
+    const session = (client as any)?.session
+    if (session && typeof session.context === "function") {
+        const raw = (await session.context({ sessionID: sessionId })) as unknown[]
+        const list = Array.isArray(raw) ? raw : []
+        if (list.length > 0 && (list[0] as any)?.info) {
+            return filterMessages(list)
+        }
+        return normalizeSessionMessages(list, sessionId)
+    }
+    if (session && typeof session.messages === "function") {
+        const response = await session.messages({ path: { id: sessionId } })
+        return filterMessages(response?.data || response)
+    }
+    return []
 }
 
 export function buildSearchContext(state: SessionState, rawMessages: WithParts[]): SearchContext {

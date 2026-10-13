@@ -1,17 +1,13 @@
 {
     "$schema": "https://json.schemastore.org/package.json",
     "name": "@local/opencode-dcp",
-    "version": "3.1.15",
+    "version": "4.0.0",
     "type": "module",
-    "description": "OpenCode plugin that optimizes token usage by pruning obsolete tool outputs from conversation context",
+    "description": "OpenCode v2 plugin that optimizes token usage by pruning obsolete tool outputs from conversation context",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
-            "types": "./dist/index.d.ts",
-            "import": "./dist/index.js"
-        },
-        "./server": {
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js"
         },
@@ -45,18 +41,31 @@
     "private": true,
     "license": "AGPL-3.0-or-later",
     "peerDependencies": {
-        "@opencode-ai/plugin": ">=1.4.3"
+        "@opentui/core": ">=0.5.17",
+        "@opentui/solid": ">=0.5.17",
+        "solid-js": ">=1.9.0"
+    },
+    "peerDependenciesMeta": {
+        "@opentui/core": {
+            "optional": true
+        },
+        "@opentui/solid": {
+            "optional": true
+        },
+        "solid-js": {
+            "optional": true
+        }
     },
     "dependencies": {
         "@anthropic-ai/tokenizer": "^0.0.4",
-        "@opencode-ai/sdk": "^1.4.3",
-        "@opentui/core": "^0.4.5",
-        "@opentui/solid": "^0.4.5",
+        "@opencode/plugin": "2.0.28",
+        "@opentui/core": "0.6.3",
+        "@opentui/solid": "0.6.3",
         "jsonc-parser": "^3.3.1",
         "solid-js": "^1.9.12"
     },
     "devDependencies": {
-        "@opencode-ai/plugin": "^1.4.3",
+        "@opencode/client": "2.0.28",
         "@types/node": "^25.5.0",
         "prettier": "^3.8.1",
         "tsup": "^8.5.1",

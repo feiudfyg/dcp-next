@@ -1,5 +1,4 @@
-import { SessionState, WithParts } from "./state"
-import { AssistantMessage, UserMessage } from "@opencode-ai/sdk/v2"
+import { SessionState, WithParts, type DcpMessageInfo } from "./state"
 import { Logger } from "./logger"
 import * as _anthropicTokenizer from "@anthropic-ai/tokenizer"
 const anthropicCountTokens = (_anthropicTokenizer.countTokens ??
@@ -13,7 +12,7 @@ export function getCurrentTokenUsage(state: SessionState, messages: WithParts[])
             continue
         }
 
-        const assistantInfo = msg.info as AssistantMessage
+        const assistantInfo = msg.info
         if ((assistantInfo.tokens?.output || 0) <= 0) {
             continue
         }
@@ -32,7 +31,7 @@ export function getCurrentTokenUsage(state: SessionState, messages: WithParts[])
     return 0
 }
 
-export function sumAssistantInputTokens(info: AssistantMessage): number {
+export function sumAssistantInputTokens(info: DcpMessageInfo): number {
     return (
         (info.tokens?.input || 0) +
         (info.tokens?.cache?.read || 0) +
@@ -40,7 +39,7 @@ export function sumAssistantInputTokens(info: AssistantMessage): number {
     )
 }
 
-export function sumAssistantTokens(info: AssistantMessage): number {
+export function sumAssistantTokens(info: DcpMessageInfo): number {
     return (
         sumAssistantInputTokens(info) + (info.tokens?.output || 0) + (info.tokens?.reasoning || 0)
     )
@@ -66,11 +65,11 @@ export function getCurrentParams(
             variant: undefined,
         }
     }
-    const userInfo = userMsg.info as UserMessage
-    const agent: string = userInfo.agent
-    const providerId: string | undefined = userInfo.model.providerID
-    const modelId: string | undefined = userInfo.model.modelID
-    const variant: string | undefined = userInfo.model.variant
+    const userInfo = userMsg.info
+    const agent: string | undefined = userInfo.agent
+    const providerId: string | undefined = userInfo.model?.providerID
+    const modelId: string | undefined = userInfo.model?.modelID
+    const variant: string | undefined = userInfo.model?.variant
 
     return { providerId, modelId, agent, variant }
 }

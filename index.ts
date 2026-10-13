@@ -1,134 +1,103 @@
-import type { Plugin } from "@opencode-ai/plugin"
+import { Plugin } from "@opencode/plugin"
 import { getConfig } from "./lib/config"
 import { createCompressMessageTool, createCompressRangeTool } from "./lib/compress"
-import {
-    compressDisabledByOpencode,
-    hasExplicitToolPermission,
-    type HostPermissionSnapshot,
-} from "./lib/host-permissions"
 import { Logger } from "./lib/logger"
 import { createSessionState } from "./lib/state"
 import { PromptStore } from "./lib/prompts/store"
-import {
-    createChatMessageTransformHandler,
-    createCommandExecuteHandler,
-    createEventHandler,
-    createSystemPromptHandler,
-    createTextCompleteHandler,
-} from "./lib/hooks"
-import { configureClientAuth, isSecureMode } from "./lib/auth"
+import { createCompressCommandExecutor, createContextHookHandler } from "./lib/hooks"
+import { type HostPermissionSnapshot } from "./lib/host-permissions"
+import type { Notify } from "./lib/ui/notification"
 
-const server: Plugin = (async (ctx) => {
-    const config = getConfig(ctx)
+export default Plugin.define({
+    id: "opencode-dcp",
+    async setup(context) {
+        const config = getConfig({ directory: context.location.directory })
 
-    if (!config.enabled) {
-        return {}
-    }
+        if (!config.enabled) {
+            return
+        }
 
-    const logger = new Logger(config.debug)
-    const state = createSessionState()
-    const prompts = new PromptStore(logger, ctx.directory, config.experimental.customPrompts)
-    const hostPermissions: HostPermissionSnapshot = {
-        global: undefined,
-        agents: {},
-    }
-
-    if (isSecureMode()) {
-        configureClientAuth(ctx.client, logger)
-        // logger.info("Secure mode detected, configured client authentication")
-    }
-
-    logger.info("DCP initialized", {
-        strategies: config.strategies,
-    })
-
-    const compressToolContext = {
-        client: ctx.client,
-        state,
-        logger,
-        config,
-        prompts,
-    }
-
-    return {
-        "experimental.chat.system.transform": createSystemPromptHandler(
-            state,
+        const logger = new Logger(config.debug)
+        const state = createSessionState()
+        const prompts = new PromptStore(
             logger,
-            config,
-            prompts,
-        ),
-        "experimental.chat.messages.transform": createChatMessageTransformHandler(
-            ctx.client,
-            state,
-            logger,
-            config,
-            prompts,
-            hostPermissions,
-        ) as any,
-        "experimental.text.complete": createTextCompleteHandler(),
-        "command.execute.before": createCommandExecuteHandler(
-            ctx.client,
-            state,
-            logger,
-            config,
-            ctx.directory,
-            hostPermissions,
-        ),
-        event: createEventHandler(state, logger),
-        tool: {
-            ...(config.compress.permission !== "deny" && {
-                compress:
-                    config.compress.mode === "message"
-                        ? createCompressMessageTool(compressToolContext)
-                        : createCompressRangeTool(compressToolContext),
-            }),
-        },
-        config: async (opencodeConfig) => {
-            if (
-                config.compress.permission !== "deny" &&
-                compressDisabledByOpencode(opencodeConfig.permission)
-            ) {
-                config.compress.permission = "deny"
-            }
+            context.location.directory,
+            config.experimental.customPrompts,
+        )
+        const hostPermissions: HostPermissionSnapshot = {
+            global: undefined,
+            agents: {},
+        }
+        const notify: Notify = {
+            message: (sessionID, text) => {
+                void context.session.synthetic({ sessionID, text })
+            },
+        }
 
-            if (config.commands.enabled && config.compress.permission !== "deny") {
-                opencodeConfig.command ??= {}
-                opencodeConfig.command["dcp-compress"] = {
-                    template: "",
-                    description: "Trigger DCP manual compression with: /dcp-compress [focus]",
-                }
-            }
+        logger.info("DCP initialized", {
+            strategies: config.strategies,
+        })
 
-            const toolsToAdd: string[] = []
-            if (config.compress.permission !== "deny" && !config.experimental.allowSubAgents) {
-                toolsToAdd.push("compress")
-            }
+        await context.session.hook(
+            "context",
+            createContextHookHandler(context, state, logger, config, prompts, hostPermissions),
+        )
 
-            if (toolsToAdd.length > 0) {
-                const existingPrimaryTools = opencodeConfig.experimental?.primary_tools ?? []
-                opencodeConfig.experimental = {
-                    ...opencodeConfig.experimental,
-                    primary_tools: [...existingPrimaryTools, ...toolsToAdd],
-                }
+        await context.tool.transform((editor) => {
+            if (config.compress.permission === "deny") {
+                return
             }
-
-            if (!hasExplicitToolPermission(opencodeConfig.permission, "compress")) {
-                const permission = opencodeConfig.permission ?? {}
-                opencodeConfig.permission = {
-                    ...permission,
-                    compress: config.compress.permission,
-                } as typeof permission
+            const toolCtx = {
+                client: context,
+                state,
+                logger,
+                config,
+                prompts,
+                notify,
             }
-
-            hostPermissions.global = opencodeConfig.permission
-            hostPermissions.agents = Object.fromEntries(
-                Object.entries(opencodeConfig.agent ?? {}).map(([name, agent]) => [
-                    name,
-                    agent?.permission,
-                ]),
+            editor.add(
+                config.compress.mode === "message"
+                    ? createCompressMessageTool(toolCtx)
+                    : createCompressRangeTool(toolCtx),
             )
-        },
-    }
-}) satisfies Plugin
+        })
 
-export default server
+        if (config.commands.enabled && config.compress.permission !== "deny") {
+            const executeCommand = createCompressCommandExecutor(
+                context,
+                state,
+                logger,
+                config,
+                context.location.directory,
+                hostPermissions,
+            )
+            await context.command.transform((editor) => {
+                editor.add({
+                    name: "dcp-compress",
+                    description: "Trigger DCP manual compression with: /dcp-compress [focus]",
+                    execute: async ({ sessionID, prompt }) => {
+                        const result = await executeCommand({
+                            sessionID,
+                            arguments: prompt?.text ?? "",
+                        })
+                        if (result) {
+                            await context.session.prompt({
+                                sessionID,
+                                text: result.text,
+                            })
+                        }
+                    },
+                })
+            })
+        }
+
+        await context.permission.hook("evaluate", (event) => {
+            if (config.compress.permission === "deny") {
+                return
+            }
+            if (event.action === "compress") {
+                event.effect = config.compress.permission
+            }
+        })
+    },
+})

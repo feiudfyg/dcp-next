@@ -5,6 +5,15 @@ import { formatProgressBar, formatTokenCount } from "./utils"
 import { PluginConfig } from "../config"
 import { getActiveSummaryTokenUsage } from "../state/utils"
 
+/**
+ * Host capability for surfacing DCP output. The TUI supplies `toast`; the
+ * server plugin supplies `message` (delivered as a synthetic session message).
+ */
+export interface Notify {
+    toast?(title: string, message: string): void
+    message?(sessionID: string, text: string): void | Promise<void>
+}
+
 interface CompressionNotificationEntry {
     blockId: number
     runId: number
@@ -67,7 +76,7 @@ function formatCompressionMetrics(removedTokens: number, summaryTokens: number):
 }
 
 export async function sendCompressNotification(
-    client: SdkClient,
+    notify: Notify | SdkClient,
     logger: Logger,
     config: PluginConfig,
     state: SessionState,
@@ -84,6 +93,8 @@ export async function sendCompressNotification(
     if (entries.length === 0) {
         return false
     }
+
+    const sink: Notify = resolveNotify(notify)
 
     let message: string
     const compressionLabel = getCompressionLabel(entries)
@@ -187,60 +198,64 @@ export async function sendCompressNotification(
         toastMessage =
             config.pruneNotification === "minimal" ? toastMessage : truncateToastBody(toastMessage)
 
-        await client.tui.showToast({
-            body: {
-                title: "DCP: Compress Notification",
-                message: toastMessage,
-                variant: "info",
-                duration: 5000,
-            },
-        })
-        return true
+        if (sink.toast) {
+            sink.toast("DCP: Compress Notification", toastMessage)
+            return true
+        }
     }
 
-    await sendIgnoredMessage(client, sessionId, message, params, logger)
+    await sendIgnoredMessage(sink, sessionId, message, params, logger)
     return true
 }
 
 export async function sendIgnoredMessage(
-    client: SdkClient,
+    sink: Notify | SdkClient,
     sessionID: string,
     text: string,
     params: any,
     logger: Logger,
 ): Promise<void> {
-    const agent = params.agent || undefined
-    const variant = params.variant || undefined
-    const model =
-        params.providerId && params.modelId
-            ? {
-                  providerID: params.providerId,
-                  modelID: params.modelId,
-              }
-            : undefined
-
     try {
-        const body = {
-            noReply: true,
-            agent: agent,
-            model: model,
-            variant: variant,
-            parts: [
-                {
-                    type: "text",
-                    text: text,
-                    ignored: true,
-                },
-            ],
-        } as Parameters<SdkClient["session"]["prompt"]>[0]["body"]
-
-        await client.session.prompt({
-            path: {
-                id: sessionID,
-            },
-            body,
-        })
+        const notify = resolveNotify(sink)
+        if (notify.message) {
+            await notify.message(sessionID, text)
+        }
     } catch (error: any) {
         logger.error("Failed to send notification", { error: error.message })
     }
+}
+
+function resolveNotify(sink: Notify | SdkClient): Notify {
+    const candidate = sink as Record<string, any> | undefined
+    if (!candidate) {
+        return {}
+    }
+    if (typeof candidate.message === "function" || typeof candidate.toast === "function") {
+        return candidate as Notify
+    }
+
+    const notify: Notify = {}
+    if (typeof candidate.tui?.showToast === "function") {
+        notify.toast = (title: string, message: string) => {
+            void candidate.tui.showToast({
+                body: { title, message, variant: "info", duration: 5000 },
+            })
+        }
+    }
+    if (typeof candidate.session?.synthetic === "function") {
+        notify.message = (sessionID: string, text: string) => {
+            void candidate.session.synthetic({ sessionID, text })
+        }
+    } else if (typeof candidate.session?.prompt === "function") {
+        notify.message = (sessionID: string, text: string) => {
+            void candidate.session.prompt({
+                path: { id: sessionID },
+                body: {
+                    noReply: true,
+                    parts: [{ type: "text", text, ignored: true }],
+                },
+            })
+        }
+    }
+    return notify
 }

@@ -1,5 +1,5 @@
-import { tool } from "@opencode-ai/plugin"
 import type { ToolContext } from "./types"
+import type { DcpToolDefinition } from "../v2/tool"
 import { compressPermission } from "../compress-permission"
 import { countTokens } from "../token-utils"
 import { MESSAGE_FORMAT_EXTENSION } from "../prompts/extensions/tool"
@@ -17,51 +17,75 @@ import type { CompressMessageToolArgs, CompressionOutcome } from "./types"
 
 function buildSchema() {
     return {
-        topic: tool.schema
-            .string()
-            .describe(
-                "Short label (3-5 words) for the overall batch - e.g., 'Closed Research Notes'",
-            ),
-        content: tool.schema
-            .array(
-                tool.schema.object({
-                    messageId: tool.schema
-                        .string()
-                        .describe("Raw message ID to compress (e.g. m0001)"),
-                    topic: tool.schema
-                        .string()
-                        .describe("Short label (3-5 words) for this one message summary"),
-                    summary: tool.schema
-                        .string()
-                        .describe("Complete technical summary replacing that one message"),
-                }),
-            )
-            .describe("Batch of individual message summaries to create in one tool call"),
+        type: "object",
+        properties: {
+            topic: {
+                type: "string",
+                description:
+                    "Short label (3-5 words) for the overall batch - e.g., 'Closed Research Notes'",
+            },
+            content: {
+                type: "array",
+                description: "Batch of individual message summaries to create in one tool call",
+                items: {
+                    type: "object",
+                    properties: {
+                        messageId: {
+                            type: "string",
+                            description: "Raw message ID to compress (e.g. m0001)",
+                        },
+                        topic: {
+                            type: "string",
+                            description: "Short label (3-5 words) for this one message summary",
+                        },
+                        summary: {
+                            type: "string",
+                            description: "Complete technical summary replacing that one message",
+                        },
+                    },
+                    required: ["messageId", "topic", "summary"],
+                    additionalProperties: false,
+                },
+            },
+        },
+        required: ["topic", "content"],
+        additionalProperties: false,
     }
 }
 
-export function createCompressMessageTool(ctx: ToolContext): ReturnType<typeof tool> {
+export function createCompressMessageTool(ctx: ToolContext): DcpToolDefinition {
     ctx.prompts.reload()
     const runtimePrompts = ctx.prompts.getRuntimePrompts()
 
-    return tool({
+    return {
+        name: "compress",
         description: runtimePrompts.compressMessage + MESSAGE_FORMAT_EXTENSION,
-        args: buildSchema(),
-        async execute(args, toolCtx) {
-            const input = args as CompressMessageToolArgs
+        input: buildSchema(),
+        options: { permission: "compress" },
+        async execute(rawInput, toolCtx) {
+            const input = rawInput as CompressMessageToolArgs
             validateArgs(input)
 
             if (compressPermission(ctx.state, ctx.config) === "deny") {
                 throw new Error("Compression is disabled by permissions.")
             }
-            const callId =
-                typeof (toolCtx as unknown as { callID?: unknown }).callID === "string"
-                    ? (toolCtx as unknown as { callID: string }).callID
-                    : undefined
+            const callId = String((toolCtx as any).id ?? (toolCtx as any).callID ?? "")
+
+            const runCtx = {
+                sessionID: String((toolCtx as any).sessionID ?? ""),
+                messageID: String((toolCtx as any).messageID ?? ""),
+                callId,
+                setTitle: (title: string) => {
+                    const progress = (toolCtx as any).progress
+                    if (typeof progress === "function") {
+                        void progress({ title })
+                    }
+                },
+            }
 
             const { rawMessages, searchContext } = await prepareSession(
                 ctx,
-                toolCtx,
+                runCtx,
                 `Compress Message: ${input.topic}`,
             )
             const { plans, skippedIssues, skippedCount } = resolveMessages(
@@ -125,8 +149,8 @@ export function createCompressMessageTool(ctx: ToolContext): ReturnType<typeof t
                         endId: plan.entry.messageId,
                         mode: "message",
                         runId,
-                        compressMessageId: toolCtx.messageID,
-                        compressCallId: callId,
+                        compressMessageId: runCtx.messageID,
+                        compressCallId: runCtx.callId,
                         summaryTokens,
                     },
                     plan.selection,
@@ -157,9 +181,9 @@ export function createCompressMessageTool(ctx: ToolContext): ReturnType<typeof t
                 })
             }
 
-            await finalizeSession(ctx, toolCtx, rawMessages, notifications, input.topic)
+            await finalizeSession(ctx, runCtx, rawMessages, notifications, input.topic)
 
-            return formatCompressionResult({ outcomes, skippedIssues, skippedCount })
+            return { content: formatCompressionResult({ outcomes, skippedIssues, skippedCount }) }
         },
-    })
+    }
 }

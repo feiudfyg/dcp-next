@@ -74,8 +74,8 @@ export function serializePruneMessagesState(
 
 export async function isSubAgentSession(client: SdkClient, sessionID: string): Promise<boolean> {
     try {
-        const result = await client.session.get({ path: { id: sessionID } })
-        return !!result.data?.parentID
+        const result: any = await (client as any).session.get({ sessionID })
+        return !!(result?.parentID ?? result?.data?.parentID)
     } catch (error: any) {
         return false
     }

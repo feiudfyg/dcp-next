@@ -1,7 +1,6 @@
 import { SessionState, ToolParameterEntry, WithParts } from "../state"
 import { countTokens, sumAssistantInputTokens } from "../token-utils"
 import { isIgnoredUserMessage } from "../messages/query"
-import type { AssistantMessage } from "@opencode-ai/sdk/v2"
 
 function extractParameterKey(tool: string, parameters: any): string {
     if (!parameters) return ""
@@ -192,7 +191,7 @@ export function cacheSystemPromptTokens(state: SessionState, messages: WithParts
         if (msg.info.role !== "assistant") {
             continue
         }
-        const info = msg.info as AssistantMessage
+        const info = msg.info
         const inputTokens = sumAssistantInputTokens(info)
         if (inputTokens > 0) {
             firstInputTokens = inputTokens

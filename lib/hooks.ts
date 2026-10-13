@@ -187,7 +187,7 @@ export function createCommandExecuteHandler(
         }
 
         if (input.command === "dcp" || input.command === "dcp-compress") {
-            const messagesResponse = await client.session.messages({
+            const messagesResponse = await (client as any).session.messages({
                 path: { id: input.sessionID },
             })
             const messages = filterMessages(messagesResponse.data || messagesResponse)
@@ -386,6 +386,217 @@ export function createEventHandler(state: SessionState, logger: Logger) {
             state.compressionTiming.startsByCallId.delete(
                 buildCompressionTimingKey(part.messageID, part.callID),
             )
+        }
+    }
+}
+
+import { internalToRequest, normalizeSessionMessages, requestToInternal } from "./v2/messages"
+import { resolveModelContextLimit } from "./v2/model"
+
+interface SystemPartLike {
+    type: string
+    text?: string
+    [key: string]: unknown
+}
+
+interface ContextHookEvent {
+    sessionID: string
+    agent?: string
+    model?: { providerID?: string; id?: string; variant?: string }
+    system: SystemPartLike[]
+    messages: unknown[]
+    options?: Record<string, unknown>
+    tools?: Record<string, unknown>
+}
+
+function appendSystemPrompt(event: ContextHookEvent, prompt: string): void {
+    const parts = event.system
+    if (!Array.isArray(parts) || parts.length === 0) {
+        event.system = [{ type: "text", text: prompt }]
+        return
+    }
+
+    const last = parts[parts.length - 1]
+    if (last && last.type === "text" && typeof last.text === "string") {
+        last.text = `${last.text}\n\n${prompt}`
+    } else {
+        parts.push({ type: "text", text: prompt })
+    }
+}
+
+function readSystemTexts(event: ContextHookEvent): string[] {
+    if (!Array.isArray(event.system)) {
+        return []
+    }
+    return event.system
+        .filter((part) => part?.type === "text" && typeof part.text === "string")
+        .map((part) => part.text as string)
+}
+
+/**
+ * The OpenCode v2 `context` hook runs immediately before an agent model request
+ * and owns both the system prompt and the assembled messages. DCP injects its
+ * guidance into `event.system` and prunes `event.messages`.
+ */
+export function createContextHookHandler(
+    client: SdkClient,
+    state: SessionState,
+    logger: Logger,
+    config: PluginConfig,
+    prompts: PromptStore,
+    hostPermissions: HostPermissionSnapshot,
+) {
+    return async (event: ContextHookEvent): Promise<void> => {
+        const sessionID = event.sessionID
+
+        if (event.model) {
+            const limit = await resolveModelContextLimit(
+                client,
+                event.model.providerID,
+                event.model.id,
+            )
+            if (limit !== undefined) {
+                state.modelContextLimit = limit
+            }
+        }
+
+        let sessionMessages: readonly unknown[] = []
+        try {
+            sessionMessages = await (client as any).session.context({ sessionID })
+        } catch (error: any) {
+            logger.warn("Failed to load session context", { error: error?.message })
+        }
+
+        const requestMessages = Array.isArray(event.messages)
+            ? (event.messages as Parameters<typeof requestToInternal>[0])
+            : []
+
+        if (requestMessages.length === 0) {
+            return
+        }
+
+        const messages: WithParts[] = requestToInternal(requestMessages, sessionMessages, sessionID)
+
+        await checkSession(client, state, logger, messages, config.manualMode.enabled)
+
+        syncCompressPermissionState(state, config, hostPermissions, messages)
+
+        if (state.isSubAgent && !config.experimental.allowSubAgents) {
+            return
+        }
+
+        const effectivePermission =
+            state.sessionId === sessionID
+                ? compressPermission(state, config)
+                : config.compress.permission
+
+        if (effectivePermission !== "deny" && !isInternalAgentCall(readSystemTexts(event))) {
+            prompts.reload()
+            const newPrompt = renderSystemPrompt(
+                prompts.getRuntimePrompts(),
+                buildProtectedToolsExtension(config.compress.protectedTools),
+                !!state.manualMode,
+                state.isSubAgent && config.experimental.allowSubAgents,
+            )
+            appendSystemPrompt(event, newPrompt)
+        }
+
+        stripHallucinations(messages)
+        cacheSystemPromptTokens(state, messages)
+        assignMessageRefs(state, messages)
+        syncCompressionBlocks(state, logger, messages)
+        syncToolCache(state, config, logger, messages)
+        buildToolIdList(state, messages)
+        prune(state, logger, config, messages)
+        await injectExtendedSubAgentResults(
+            client,
+            state,
+            logger,
+            messages,
+            config.experimental.allowSubAgents,
+        )
+        const compressionPriorities = buildPriorityMap(config, state, messages)
+        prompts.reload()
+        injectCompressNudges(
+            state,
+            config,
+            logger,
+            messages,
+            prompts.getRuntimePrompts(),
+            compressionPriorities,
+        )
+        injectMessageIds(state, config, messages, compressionPriorities)
+        applyPendingManualTrigger(state, messages, logger)
+        stripStaleMetadata(messages)
+
+        const rebuilt = internalToRequest(messages, requestMessages)
+        event.messages = rebuilt
+
+        if (state.sessionId) {
+            await logger.saveContext(state.sessionId, messages)
+        }
+    }
+}
+
+/**
+ * Command executor for the model-driven `/dcp-compress` command: it records the
+ * pending manual trigger and lets the default (empty-template) command run so
+ * the model invokes the `compress` tool.
+ */
+export function createCompressCommandExecutor(
+    client: SdkClient,
+    state: SessionState,
+    logger: Logger,
+    config: PluginConfig,
+    workingDirectory: string,
+    hostPermissions: HostPermissionSnapshot,
+) {
+    return async (input: {
+        sessionID: string
+        arguments?: string
+    }): Promise<{ text: string } | undefined> => {
+        const messagesResponse = await (client as any).session.context({
+            sessionID: input.sessionID,
+        })
+        const messages = normalizeSessionMessages(messagesResponse as unknown[], input.sessionID)
+
+        await ensureSessionInitialized(
+            client,
+            state,
+            input.sessionID,
+            logger,
+            messages,
+            config.manualMode.enabled,
+        )
+
+        syncCompressPermissionState(state, config, hostPermissions, messages)
+
+        if (compressPermission(state, config) === "deny") {
+            return undefined
+        }
+
+        const commandCtx = {
+            client,
+            state,
+            config,
+            logger,
+            sessionId: input.sessionID,
+            messages,
+        }
+
+        const userFocus = (input.arguments || "").trim()
+        const prompt = await handleManualTriggerCommand(commandCtx, "compress", userFocus)
+        if (!prompt) {
+            return undefined
+        }
+
+        state.manualMode = "compress-pending"
+        state.pendingManualTrigger = {
+            sessionId: input.sessionID,
+            prompt,
+        }
+        return {
+            text: userFocus ? `/dcp-compress ${userFocus}` : "/dcp-compress",
         }
     }
 }

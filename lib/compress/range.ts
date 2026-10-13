@@ -1,5 +1,5 @@
-import { tool } from "@opencode-ai/plugin"
 import type { ToolContext } from "./types"
+import type { DcpToolDefinition } from "../v2/tool"
 import { compressPermission } from "../compress-permission"
 import { countTokens } from "../token-utils"
 import {
@@ -36,38 +36,53 @@ import type { CompressRangeToolArgs, CompressionOutcome } from "./types"
 
 function buildSchema() {
     return {
-        topic: tool.schema
-            .string()
-            .describe("Short label (3-5 words) for display - e.g., 'Auth System Exploration'"),
-        content: tool.schema
-            .array(
-                tool.schema.object({
-                    startId: tool.schema
-                        .string()
-                        .describe(
-                            "Message or block ID marking the beginning of range (e.g. m0001, b2)",
-                        ),
-                    endId: tool.schema
-                        .string()
-                        .describe("Message or block ID marking the end of range (e.g. m0012, b5)"),
-                    summary: tool.schema
-                        .string()
-                        .describe("Complete technical summary replacing all content in range"),
-                    replaceBlockIds: tool.schema
-                        .array(tool.schema.string())
-                        .optional()
-                        .describe(
-                            'Optional prior block IDs to replace, e.g. ["b2"]. Listed blocks are removed and must be covered by your summary. Unlisted omitted prior blocks are preserved automatically.',
-                        ),
-                }),
-            )
-            .describe(
-                "One or more ranges to compress, each with start/end boundaries and a summary",
-            ),
+        type: "object",
+        properties: {
+            topic: {
+                type: "string",
+                description:
+                    "Short label (3-5 words) for display - e.g., 'Auth System Exploration'",
+            },
+            content: {
+                type: "array",
+                description:
+                    "One or more ranges to compress, each with start/end boundaries and a summary",
+                items: {
+                    type: "object",
+                    properties: {
+                        startId: {
+                            type: "string",
+                            description:
+                                "Message or block ID marking the beginning of range (e.g. m0001, b2)",
+                        },
+                        endId: {
+                            type: "string",
+                            description:
+                                "Message or block ID marking the end of range (e.g. m0012, b5)",
+                        },
+                        summary: {
+                            type: "string",
+                            description:
+                                "Complete technical summary replacing all content in range",
+                        },
+                        replaceBlockIds: {
+                            type: "array",
+                            items: { type: "string" },
+                            description:
+                                'Optional prior block IDs to replace, e.g. ["b2"]. Listed blocks are removed and must be covered by your summary. Unlisted omitted prior blocks are preserved automatically.',
+                        },
+                    },
+                    required: ["startId", "endId", "summary"],
+                    additionalProperties: false,
+                },
+            },
+        },
+        required: ["topic", "content"],
+        additionalProperties: false,
     }
 }
 
-export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof tool> {
+export function createCompressRangeTool(ctx: ToolContext): DcpToolDefinition {
     ctx.prompts.reload()
     const runtimePrompts = ctx.prompts.getRuntimePrompts()
 
@@ -77,24 +92,35 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
             ? RANGE_PRIOR_SUMMARY_DROP_EXTENSION
             : RANGE_PRIOR_SUMMARY_PRESERVE_EXTENSION)
 
-    return tool({
+    return {
+        name: "compress",
         description: runtimePrompts.compressRange + RANGE_FORMAT_EXTENSION + priorBlockExtension,
-        args: buildSchema(),
-        async execute(args, toolCtx) {
-            const input = args as CompressRangeToolArgs
+        input: buildSchema(),
+        options: { permission: "compress" },
+        async execute(rawInput, toolCtx) {
+            const input = rawInput as CompressRangeToolArgs
             validateArgs(input)
 
             if (compressPermission(ctx.state, ctx.config) === "deny") {
                 throw new Error("Compression is disabled by permissions.")
             }
-            const callId =
-                typeof (toolCtx as unknown as { callID?: unknown }).callID === "string"
-                    ? (toolCtx as unknown as { callID: string }).callID
-                    : undefined
+            const callId = String((toolCtx as any).id ?? (toolCtx as any).callID ?? "")
+
+            const runCtx = {
+                sessionID: String((toolCtx as any).sessionID ?? ""),
+                messageID: String((toolCtx as any).messageID ?? ""),
+                callId,
+                setTitle: (title: string) => {
+                    const progress = (toolCtx as any).progress
+                    if (typeof progress === "function") {
+                        void progress({ title })
+                    }
+                },
+            }
 
             const { rawMessages, searchContext } = await prepareSession(
                 ctx,
-                toolCtx,
+                runCtx,
                 `Compress Range: ${input.topic}`,
             )
             const resolvedPlans = resolveRanges(input, searchContext, ctx.state)
@@ -199,8 +225,8 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                         endId: preparedPlan.entry.endId,
                         mode: "range",
                         runId,
-                        compressMessageId: toolCtx.messageID,
-                        compressCallId: callId,
+                        compressMessageId: runCtx.messageID,
+                        compressCallId: runCtx.callId,
                         summaryTokens,
                     },
                     preparedPlan.selection,
@@ -233,9 +259,9 @@ export function createCompressRangeTool(ctx: ToolContext): ReturnType<typeof too
                 })
             }
 
-            await finalizeSession(ctx, toolCtx, rawMessages, notifications, input.topic)
+            await finalizeSession(ctx, runCtx, rawMessages, notifications, input.topic)
 
-            return formatCompressionResult({ outcomes })
+            return { content: formatCompressionResult({ outcomes }) }
         },
-    })
+    }
 }

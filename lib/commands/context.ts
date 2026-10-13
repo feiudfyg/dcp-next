@@ -49,7 +49,7 @@ import {
     getCurrentParams,
     sumAssistantTokens,
 } from "../token-utils"
-import type { AssistantMessage, TextPart, ToolPart } from "@opencode-ai/sdk/v2"
+import type { DcpMessageInfo, DcpTextPart, DcpToolPart } from "../state"
 import type { SdkClient } from "../sdk-types"
 
 export interface ContextCommandContext {
@@ -87,13 +87,13 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
         total: 0,
     }
 
-    let lastAssistant: AssistantMessage | undefined
+    let lastAssistant: DcpMessageInfo | undefined
     let lastCreated = Number.NEGATIVE_INFINITY
     for (const msg of messages) {
         if (msg.info.role !== "assistant") {
             continue
         }
-        const assistantInfo = msg.info as AssistantMessage
+        const assistantInfo = msg.info
         const created = assistantInfo.time?.created ?? 0
         if ((assistantInfo.tokens?.output || 0) > 0 && created > lastCreated) {
             lastAssistant = assistantInfo
@@ -122,7 +122,7 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
 
         for (const part of parts) {
             if (part.type === "tool") {
-                const toolPart = part as ToolPart
+                const toolPart: DcpToolPart = part
                 if (toolPart.callID) {
                     allToolIds.add(toolPart.callID)
                     if (!isCompacted) {
@@ -154,10 +154,10 @@ export function analyzeContextTokens(state: SessionState, messages: WithParts[])
                 !isCompacted &&
                 !isIgnoredUser
             ) {
-                const textPart = part as TextPart
+                const textPart: DcpTextPart = part
                 userTextParts.push(textPart.text || "")
             } else if (part.type === "text" && msg.info.role === "assistant" && !isCompacted) {
-                const textPart = part as TextPart
+                const textPart: DcpTextPart = part
                 assistantTextParts.push(textPart.text || "")
             }
         }

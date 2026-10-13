@@ -3,6 +3,7 @@ import type { Logger } from "../logger"
 import type { PromptStore } from "../prompts/store"
 import type { CompressionBlock, CompressionMode, SessionState, WithParts } from "../state"
 import type { SdkClient } from "../sdk-types"
+import type { Notify } from "../ui/notification"
 
 export interface ToolContext {
     client: SdkClient
@@ -10,6 +11,7 @@ export interface ToolContext {
     logger: Logger
     config: PluginConfig
     prompts: PromptStore
+    notify: Notify
 }
 
 export interface CompressRangeEntry {

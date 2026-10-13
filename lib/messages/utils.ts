@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto"
 import type { SessionState, WithParts } from "../state"
 import { isMessageCompacted } from "../state/utils"
-import type { UserMessage } from "@opencode-ai/sdk/v2"
 
 const SUMMARY_ID_HASH_LENGTH = 16
 const DCP_BLOCK_ID_TAG_REGEX = /(<dcp-message-id(?=[\s>])[^>]*>)b\d+(<\/dcp-message-id>)/g
@@ -20,7 +19,7 @@ export const createSyntheticUserMessage = (
     content: string,
     stableSeed?: string,
 ): WithParts => {
-    const userInfo = baseMessage.info as UserMessage
+    const userInfo = baseMessage.info
     const now = Date.now()
     const deterministicSeed = stableSeed?.trim() || userInfo.id
     const messageId = generateStableId("msg_dcp_summary", deterministicSeed)
@@ -52,7 +51,7 @@ export const createSyntheticTextPart = (
     content: string,
     stableSeed?: string,
 ) => {
-    const userInfo = baseMessage.info as UserMessage
+    const userInfo = baseMessage.info
     const deterministicSeed = stableSeed?.trim() || userInfo.id
     const partId = generateStableId("prt_dcp_text", deterministicSeed)
 

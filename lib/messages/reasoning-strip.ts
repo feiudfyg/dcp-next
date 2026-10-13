@@ -12,8 +12,8 @@ export function stripStaleMetadata(messages: WithParts[]): void {
         return
     }
 
-    const modelID = lastUserMessage.info.model.modelID
-    const providerID = lastUserMessage.info.model.providerID
+    const modelID = lastUserMessage.info.model?.modelID
+    const providerID = lastUserMessage.info.model?.providerID
 
     messages.forEach((message) => {
         if (message.info.role !== "assistant") {

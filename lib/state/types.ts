@@ -1,12 +1,99 @@
 import type { CompressionTimingState } from "../compress/timing"
-import { Message, Part } from "@opencode-ai/sdk/v2"
-
-export interface WithParts {
-    info: Message
-    parts: Part[]
-}
 
 export type ToolStatus = "pending" | "running" | "completed" | "error"
+
+/**
+ * DCP's internal message model. It is deliberately shaped like the historical
+ * `{ info, parts }` view so the compression/pruning pipeline can operate on a
+ * single normalized representation, but it is sourced natively from OpenCode v2
+ * (`SessionMessage.Info` plus the model-request `Message` projection).
+ */
+
+export interface DcpToolState {
+    status: ToolStatus
+    input?: any
+    output?: any
+    error?: any
+    metadata?: Record<string, any>
+    time?: { start?: number; end?: number; compacted?: number }
+}
+
+export interface DcpToolPart {
+    type: "tool"
+    callID: string
+    tool: string
+    state: DcpToolState
+}
+
+export interface DcpTextPart {
+    type: "text"
+    text: string
+    synthetic?: boolean
+    ignored?: boolean
+    id?: string
+    sessionID?: string
+    messageID?: string
+}
+
+export interface DcpReasoningPart {
+    type: "reasoning"
+    text: string
+}
+
+export interface DcpStepStartPart {
+    type: "step-start"
+    snapshot?: string
+}
+
+export interface DcpStepFinishPart {
+    type: "step-finish"
+    tokens?: unknown
+}
+
+export interface DcpFilePart {
+    type: "file"
+    [key: string]: any
+}
+
+export type DcpPart =
+    | DcpToolPart
+    | DcpTextPart
+    | DcpReasoningPart
+    | DcpStepStartPart
+    | DcpStepFinishPart
+    | DcpFilePart
+
+export interface DcpModelRef {
+    providerID?: string
+    modelID?: string
+    variant?: string
+}
+
+export interface DcpTokenUsage {
+    input?: number
+    output?: number
+    reasoning?: number
+    cache?: { read?: number; write?: number }
+}
+
+export interface DcpMessageInfo {
+    id: string
+    sessionID: string
+    role: "user" | "assistant"
+    agent?: string
+    model?: DcpModelRef
+    modelID?: string
+    providerID?: string
+    variant?: string
+    tokens?: DcpTokenUsage
+    summary?: boolean
+    time: { created: number }
+}
+
+export interface WithParts {
+    info: DcpMessageInfo
+    parts: DcpPart[]
+}
 
 export interface ToolParameterEntry {
     tool: string

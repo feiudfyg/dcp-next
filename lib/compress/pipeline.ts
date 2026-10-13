@@ -13,14 +13,10 @@ import { applyPendingCompressionDurations } from "./timing"
 import { compressPermission } from "../compress-permission"
 
 interface RunContext {
-    ask(input: {
-        permission: string
-        patterns: string[]
-        always: string[]
-        metadata: Record<string, unknown>
-    }): Promise<void>
-    metadata(input: { title: string }): void
     sessionID: string
+    messageID: string
+    callId: string
+    setTitle(title: string): void
 }
 
 export interface NotificationEntry {
@@ -48,16 +44,7 @@ export async function prepareSession(
         )
     }
 
-    if (compressPermission(ctx.state, ctx.config) === "ask") {
-        await toolCtx.ask({
-            permission: "compress",
-            patterns: ["*"],
-            always: ["*"],
-            metadata: {},
-        })
-    }
-
-    toolCtx.metadata({ title })
+    toolCtx.setTitle(title)
 
     const rawMessages = await fetchSessionMessages(ctx.client, toolCtx.sessionID)
 
@@ -106,7 +93,7 @@ export async function finalizeSession(
         .map((msg) => msg.info.id)
 
     await sendCompressNotification(
-        ctx.client,
+        ctx.notify ?? ctx.client,
         ctx.logger,
         ctx.config,
         ctx.state,

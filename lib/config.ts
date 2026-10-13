@@ -2,13 +2,22 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { join, dirname } from "path"
 import { homedir } from "os"
 import { parse, printParseErrorCode, type ParseError } from "jsonc-parser"
-import type { PluginInput } from "@opencode-ai/plugin"
 import { findOpencodeDir } from "./opencode-dir"
 
 type Permission = "ask" | "allow" | "deny"
 type CompressMode = "range" | "message"
 
 const CONFIG_TOAST_DELAY_MS = 7000
+
+/**
+ * Minimal surface the config loader needs from the host. The server plugin
+ * supplies `notify` to surface warnings as TUI toasts; other surfaces can omit
+ * it and warnings fall back to silence.
+ */
+export interface InitContext {
+    directory: string
+    notify?: (warning: { title: string; message: string }) => void
+}
 
 export interface Deduplication {
     enabled: boolean
@@ -655,7 +664,7 @@ export function validateConfigTypes(config: Record<string, any>): ValidationErro
 }
 
 function showConfigWarnings(
-    ctx: PluginInput,
+    ctx: InitContext,
     configPath: string,
     configData: Record<string, any>,
     isProject: boolean,
@@ -687,13 +696,9 @@ function showConfigWarnings(
 
     setTimeout(() => {
         try {
-            ctx.client.tui.showToast({
-                body: {
-                    title: `DCP: ${configType} warning`,
-                    message: `${configPath}\n${messages.join("\n")}`,
-                    variant: "warning",
-                    duration: CONFIG_TOAST_DELAY_MS,
-                },
+            ctx.notify?.({
+                title: `DCP: ${configType} warning`,
+                message: `${configPath}\n${messages.join("\n")}`,
             })
         } catch {}
     }, CONFIG_TOAST_DELAY_MS)
@@ -760,7 +765,7 @@ const GLOBAL_CONFIG_DIR = process.env.XDG_CONFIG_HOME
 const GLOBAL_CONFIG_PATH_JSONC = join(GLOBAL_CONFIG_DIR, "dcp.jsonc")
 const GLOBAL_CONFIG_PATH_JSON = join(GLOBAL_CONFIG_DIR, "dcp.json")
 
-function getConfigPaths(ctx?: PluginInput): {
+function getConfigPaths(ctx?: InitContext): {
     global: string | null
     configDir: string | null
     project: string | null
@@ -1019,22 +1024,15 @@ function mergeLayer(config: PluginConfig, data: Record<string, any>): PluginConf
     }
 }
 
-function scheduleParseWarning(ctx: PluginInput, title: string, message: string): void {
+function scheduleParseWarning(ctx: InitContext, title: string, message: string): void {
     setTimeout(() => {
         try {
-            ctx.client.tui.showToast({
-                body: {
-                    title,
-                    message,
-                    variant: "warning",
-                    duration: CONFIG_TOAST_DELAY_MS,
-                },
-            })
+            ctx.notify?.({ title, message })
         } catch {}
     }, CONFIG_TOAST_DELAY_MS)
 }
 
-export function getConfig(ctx: PluginInput): PluginConfig {
+export function getConfig(ctx: InitContext): PluginConfig {
     let config = deepCloneConfig(defaultConfig)
     const configPaths = getConfigPaths(ctx)
 

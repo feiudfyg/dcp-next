@@ -5,7 +5,6 @@ import { isMessageCompacted } from "../state/utils"
 import { createSyntheticUserMessage, replaceBlockIdsWithBlocked } from "./utils"
 import { getLastUserMessage } from "./query"
 import { PRUNED_COMPRESS_ARGS_REPLACEMENT } from "../compress/placeholders"
-import type { UserMessage } from "@opencode-ai/sdk/v2"
 
 const PRUNED_TOOL_OUTPUT_REPLACEMENT =
     "[Output removed to save context - information superseded or no longer needed]"
@@ -205,7 +204,6 @@ const filterCompressedRanges = (
                 const userMessage = getLastUserMessage(messages, msgIndex)
 
                 if (userMessage) {
-                    const userInfo = userMessage.info as UserMessage
                     const summaryContent =
                         config.compress.mode === "message"
                             ? replaceBlockIdsWithBlocked(rawSummaryContent)

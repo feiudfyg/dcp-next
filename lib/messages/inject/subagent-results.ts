@@ -1,6 +1,7 @@
 import type { Logger } from "../../logger"
 import type { SdkClient } from "../../sdk-types"
 import type { SessionState, WithParts } from "../../state"
+import { normalizeSessionMessages } from "../../v2/messages"
 import { filterMessages } from "../shape"
 import {
     buildSubagentResultText,
@@ -27,11 +28,20 @@ function trimSubAgentResultCache(state: SessionState): void {
 }
 
 async function fetchSubAgentMessages(client: SdkClient, sessionId: string): Promise<WithParts[]> {
-    const response = await client.session.messages({
-        path: { id: sessionId },
-    })
-
-    return filterMessages(response?.data || response)
+    const session = (client as any)?.session
+    if (session && typeof session.context === "function") {
+        const raw = (await session.context({ sessionID: sessionId })) as unknown[]
+        const list = Array.isArray(raw) ? raw : []
+        if (list.length > 0 && (list[0] as any)?.info) {
+            return filterMessages(list)
+        }
+        return normalizeSessionMessages(list, sessionId)
+    }
+    if (session && typeof session.messages === "function") {
+        const response = await session.messages({ path: { id: sessionId } })
+        return filterMessages(response?.data || response)
+    }
+    return []
 }
 
 export const injectExtendedSubAgentResults = async (
