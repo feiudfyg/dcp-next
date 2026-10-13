@@ -1,4 +1,4 @@
-import { PluginConfig } from "../config"
+import type { PluginConfig } from "../config"
 import { Logger } from "../logger"
 import type { SessionState, WithParts } from "../state"
 import { addPrunedTokens } from "../state/utils"

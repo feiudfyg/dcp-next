@@ -1,6 +1,6 @@
 import type { SessionState, ToolStatus, WithParts } from "./index"
 import type { Logger } from "../logger"
-import { PluginConfig } from "../config"
+import type { PluginConfig } from "../config"
 import { isMessageCompacted } from "./utils"
 import { countToolTokens } from "../token-utils"
 

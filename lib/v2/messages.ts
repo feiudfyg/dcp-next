@@ -452,30 +452,33 @@ function internalPartToRequest(part: DcpPart): RequestContentPart[] {
             return [{ type: "text", text: part.text }]
         case "reasoning":
             return [{ type: "reasoning", text: part.text }]
-        case "tool": {
-            const parts: RequestContentPart[] = [
-                { type: "tool-call", id: part.callID, name: part.tool, input: part.state.input },
-            ]
-            if (part.state.status === "completed" && part.state.output !== undefined) {
-                parts.push({
-                    type: "tool-result",
-                    id: part.callID,
-                    name: part.tool,
-                    result: { type: "text", value: String(part.state.output) },
-                })
-            } else if (part.state.status === "error" && part.state.error !== undefined) {
-                parts.push({
-                    type: "tool-result",
-                    id: part.callID,
-                    name: part.tool,
-                    result: { type: "error", value: part.state.error },
-                })
-            }
-            return parts
-        }
         default:
             return []
     }
+}
+
+function toolCallToRequest(part: DcpToolPart): RequestContentPart {
+    return { type: "tool-call", id: part.callID, name: part.tool, input: part.state.input }
+}
+
+function toolResultToRequest(part: DcpToolPart): RequestContentPart | undefined {
+    if (part.state.status === "completed" && part.state.output !== undefined) {
+        return {
+            type: "tool-result",
+            id: part.callID,
+            name: part.tool,
+            result: { type: "text", value: String(part.state.output) },
+        }
+    }
+    if (part.state.status === "error" && part.state.error !== undefined) {
+        return {
+            type: "tool-result",
+            id: part.callID,
+            name: part.tool,
+            result: { type: "error", value: part.state.error },
+        }
+    }
+    return undefined
 }
 
 const SYNTHETIC_SUMMARY_PREFIX = "msg_dcp_summary_"
@@ -486,8 +489,10 @@ function isSyntheticId(id: string): boolean {
 
 /**
  * Rebuild the outgoing request messages from DCP's (possibly pruned) internal
- * model. Messages correlated to an original request message reuse it (keeping
- * provider metadata); synthetic summary messages become fresh user messages.
+ * model. Assistant tool calls are emitted in the assistant message; tool
+ * results are emitted as a following `role: "tool"` message, matching the
+ * model-request contract. Synthetic summary messages become fresh user
+ * messages.
  */
 export function internalToRequest(
     internal: WithParts[],
@@ -504,16 +509,30 @@ export function internalToRequest(
 
     for (const message of internal) {
         const id = message.info.id
-        const content = message.parts.flatMap(internalPartToRequest)
-        const source = originalById.get(id)
+        const content: RequestContentPart[] = []
+        const toolResults: RequestContentPart[] = []
 
-        if (source) {
-            output.push({ ...source, role: message.info.role, content })
-            continue
+        for (const part of message.parts) {
+            if (part.type === "tool") {
+                content.push(toolCallToRequest(part))
+                const result = toolResultToRequest(part)
+                if (result) {
+                    toolResults.push(result)
+                }
+                continue
+            }
+            content.push(...internalPartToRequest(part))
         }
 
-        if (isSyntheticId(id) || !originalById.has(id)) {
+        const source = originalById.get(id)
+        if (source) {
+            output.push({ ...source, role: message.info.role, content })
+        } else if (isSyntheticId(id) || !originalById.has(id)) {
             output.push({ role: message.info.role, content })
+        }
+
+        if (toolResults.length > 0) {
+            output.push({ role: "tool", content: toolResults })
         }
     }
 

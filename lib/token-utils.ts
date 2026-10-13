@@ -1,4 +1,4 @@
-import { SessionState, WithParts, type DcpMessageInfo } from "./state"
+import type { SessionState, WithParts, DcpMessageInfo } from "./state"
 import { Logger } from "./logger"
 import * as _anthropicTokenizer from "@anthropic-ai/tokenizer"
 const anthropicCountTokens = (_anthropicTokenizer.countTokens ??

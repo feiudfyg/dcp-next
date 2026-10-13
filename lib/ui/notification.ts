@@ -2,7 +2,7 @@ import type { Logger } from "../logger"
 import type { SessionState } from "../state"
 import type { SdkClient } from "../sdk-types"
 import { formatProgressBar, formatTokenCount } from "./utils"
-import { PluginConfig } from "../config"
+import type { PluginConfig } from "../config"
 import { getActiveSummaryTokenUsage } from "../state/utils"
 
 /**

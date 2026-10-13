@@ -1,4 +1,4 @@
-import { SessionState, ToolParameterEntry, WithParts } from "../state"
+import type { SessionState, ToolParameterEntry, WithParts } from "../state"
 import { countTokens, sumAssistantInputTokens } from "../token-utils"
 import { isIgnoredUserMessage } from "../messages/query"
 
