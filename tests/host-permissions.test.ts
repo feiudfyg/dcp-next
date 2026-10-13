@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
+    buildHostPermissionConfig,
+    buildHostPermissionSnapshot,
     compressDisabledByOpencode,
     hasExplicitToolPermission,
     resolveEffectiveCompressPermission,
@@ -101,4 +103,38 @@ test("explicit permission detection works without Object.hasOwn", () => {
     } finally {
         Object.hasOwn = originalHasOwn
     }
+})
+
+test("v2 agent permission entries map into the v1 permission shape", () => {
+    assert.deepEqual(
+        buildHostPermissionConfig([
+            { action: "*", resource: "*", effect: "allow" },
+            { action: "compress", resource: "*", effect: "deny" },
+        ]),
+        { "*": "allow", compress: "deny" },
+    )
+    assert.deepEqual(
+        buildHostPermissionConfig([{ action: "compress", resource: "/tmp/*", effect: "deny" }]),
+        {
+            compress: { "/tmp/*": "deny" },
+        },
+    )
+    assert.equal(buildHostPermissionConfig([]), undefined)
+})
+
+test("v2 agent snapshot drives effective compress permission", () => {
+    const snapshot = buildHostPermissionSnapshot([
+        { id: "build", permissions: [{ action: "compress", resource: "*", effect: "deny" }] },
+        { id: "plan", permissions: [{ action: "compress", resource: "*", effect: "allow" }] },
+        { permissions: [{ action: "compress", resource: "*", effect: "deny" }] },
+    ])
+
+    assert.deepEqual(snapshot.agents, {
+        build: { compress: "deny" },
+        plan: { compress: "allow" },
+    })
+    assert.equal(resolveEffectiveCompressPermission("allow", snapshot, "build"), "deny")
+    assert.equal(resolveEffectiveCompressPermission("allow", snapshot, "plan"), "allow")
+    assert.equal(resolveEffectiveCompressPermission("allow", snapshot, "unknown"), "allow")
+    assert.equal(compressDisabledByOpencode(snapshot.agents.build), true)
 })

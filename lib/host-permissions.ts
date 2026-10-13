@@ -99,3 +99,66 @@ export const hasExplicitToolPermission = (
 ): boolean => {
     return permissionConfig ? Object.prototype.hasOwnProperty.call(permissionConfig, tool) : false
 }
+
+export interface HostAgentPermission {
+    action: string
+    resource?: string
+    effect: string
+}
+
+export interface HostAgent {
+    id?: string
+    permissions?: ReadonlyArray<HostAgentPermission>
+}
+
+/**
+ * Convert OpenCode v2 agent permission entries (`{action, resource, effect}`)
+ * into the v1-shaped `PermissionConfig` this module already understands.
+ */
+export const buildHostPermissionConfig = (
+    permissions: ReadonlyArray<HostAgentPermission> | undefined,
+): PermissionConfig => {
+    if (!permissions || permissions.length === 0) {
+        return undefined
+    }
+
+    const config: Record<string, PermissionValue> = {}
+    for (const permission of permissions) {
+        if (
+            permission.effect !== "ask" &&
+            permission.effect !== "allow" &&
+            permission.effect !== "deny"
+        ) {
+            continue
+        }
+        const resource = permission.resource ?? "*"
+        if (resource === "*") {
+            config[permission.action] = permission.effect
+            continue
+        }
+        const existing = config[permission.action]
+        if (existing && typeof existing === "object") {
+            existing[resource] = permission.effect
+        } else {
+            config[permission.action] = { [resource]: permission.effect }
+        }
+    }
+
+    return Object.keys(config).length > 0 ? config : undefined
+}
+
+export const buildHostPermissionSnapshot = (
+    agents: ReadonlyArray<HostAgent>,
+): HostPermissionSnapshot => {
+    const snapshot: HostPermissionSnapshot = { global: undefined, agents: {} }
+    for (const agent of agents) {
+        if (!agent?.id) {
+            continue
+        }
+        const config = buildHostPermissionConfig(agent.permissions)
+        if (config) {
+            snapshot.agents[agent.id] = config
+        }
+    }
+    return snapshot
+}

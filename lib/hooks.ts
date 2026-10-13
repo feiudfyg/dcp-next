@@ -34,7 +34,7 @@ import {
     handleStatsCommand,
     handleSweepCommand,
 } from "./commands"
-import { type HostPermissionSnapshot } from "./host-permissions"
+import { buildHostPermissionSnapshot, type HostPermissionSnapshot } from "./host-permissions"
 import { compressPermission, syncCompressPermissionState } from "./compress-permission"
 import { checkSession, ensureSessionInitialized, saveSessionState, syncToolCache } from "./state"
 import type { SdkClient } from "./sdk-types"
@@ -438,6 +438,24 @@ function readSystemTexts(event: ContextHookEvent): string[] {
  * and owns both the system prompt and the assembled messages. DCP injects its
  * guidance into `event.system` and prunes `event.messages`.
  */
+async function refreshHostPermissions(
+    client: SdkClient,
+    snapshot: HostPermissionSnapshot,
+): Promise<void> {
+    try {
+        const agentDomain = (client as any)?.agent
+        if (!agentDomain || typeof agentDomain.list !== "function") {
+            return
+        }
+        const agents = await agentDomain.list()
+        const next = buildHostPermissionSnapshot(Array.isArray(agents) ? agents : [])
+        snapshot.global = next.global
+        snapshot.agents = next.agents
+    } catch {
+        // Host permission introspection is best-effort.
+    }
+}
+
 export function createContextHookHandler(
     client: SdkClient,
     state: SessionState,
@@ -479,6 +497,7 @@ export function createContextHookHandler(
 
         await checkSession(client, state, logger, messages, config.manualMode.enabled)
 
+        await refreshHostPermissions(client, hostPermissions)
         syncCompressPermissionState(state, config, hostPermissions, messages)
 
         if (state.isSubAgent && !config.experimental.allowSubAgents) {
