@@ -1,7 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import type { PluginConfig } from "../lib/config"
-import { createTextCompleteHandler } from "../lib/hooks"
 import { Logger } from "../lib/logger"
 import { assignMessageRefs } from "../lib/message-ids"
 import { injectMessageIds } from "../lib/messages/inject/inject"
@@ -764,11 +763,6 @@ test("hallucination stripping removes all dcp-prefixed XML tags including varian
         "omega"
 
     assert.equal(stripHallucinationsFromString(text), "alphaomega")
-
-    const handler = createTextCompleteHandler()
-    const output = { text }
-    await handler({ sessionID: "session", messageID: "message", partID: "part" }, output)
-    assert.equal(output.text, "alphaomega")
 })
 
 test("hallucination stripping removes colon and underscore dcp tag variants", async () => {

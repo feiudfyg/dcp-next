@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (169 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `npm run typecheck` · `npm test` (161 tests) · `npm run build` · `npx prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -76,6 +76,10 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] Subagent tool recognised under both v1 (`task`) and v2 (`subagent`) names; protected by default. Verified live (subagent output kept in a stored block summary).
 - [x] v1 + v2 context handlers share one `runMessagePipeline` (no drift).
 - [x] DCP's own `session.synthetic` notifications are excluded from the outgoing request (they persist in the transcript and were re-sent to the model every turn).
+- [x] Dead v1 code removed: `createSystemPromptHandler`, `createChatMessageTransformHandler`,
+      `createCommandExecuteHandler`, `createTextCompleteHandler`, `createEventHandler`,
+      `resolveCompressionDuration`, `filterMessagesInPlace`, and `lib/auth.ts` (all test-only
+      or unreferenced after the v2 port). Tests consolidated into `tests/hooks.test.ts` + `tests/tool-timing.test.ts`.
 - [ ] TUI: cannot be runtime-verified headless (host TUI exits with `chdir` on an
       empty path without a real terminal). Covered by `tui-context`/`tui-setup` unit
       tests + a static audit of every `api.*` call against the compat layer.
@@ -145,3 +149,13 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - Live 12-turn session (`e2e-long.ps1`): 12 sequential blocks, all with
   durations, no adapter/pipeline warnings; stable `msg_*` ids (id-based
   correlation confirmed, positional is a fallback).
+- Compression **quality/ratio** test (`e2e-quality.ps1`, Aurora facts):
+    - Phase A (30→1): compression denied while 10 fact-turns accumulate, then one
+      manual compress → 1 block `m0001..m0041` ct=4722 st=842 **ratio 5.6x**; summary
+      keeps all 10 facts verbatim + task shape + caveats.
+    - Phase B (short→one): small blocks then consolidation → b4 consumed [2,3],
+      b8 consumed [5,6,7], b9 consumed [1,4,8]; only b9 active, ct=7184 st=890
+      **ratio 8.1x**. Nested re-compression + `included`/`consumed` chains correct.
+- Ordering fix: `modelContextLimit` is now applied inside `runMessagePipeline`
+  after `checkSession` (a fresh session's `resetSessionState` was wiping the
+  limit set just before it). Covered by `tests/hooks.test.ts`.

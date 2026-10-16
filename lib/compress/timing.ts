@@ -27,33 +27,6 @@ export function consumeCompressionStart(
     return start
 }
 
-export function resolveCompressionDuration(
-    startedAt: number | undefined,
-    eventTime: number | undefined,
-    partTime: { start?: unknown; end?: unknown } | undefined,
-): number | undefined {
-    const runningAt =
-        typeof partTime?.start === "number" && Number.isFinite(partTime.start)
-            ? partTime.start
-            : eventTime
-    const pendingToRunningMs =
-        typeof startedAt === "number" && typeof runningAt === "number"
-            ? Math.max(0, runningAt - startedAt)
-            : undefined
-
-    const toolStart = partTime?.start
-    const toolEnd = partTime?.end
-    const runtimeMs =
-        typeof toolStart === "number" &&
-        Number.isFinite(toolStart) &&
-        typeof toolEnd === "number" &&
-        Number.isFinite(toolEnd)
-            ? Math.max(0, toolEnd - toolStart)
-            : undefined
-
-    return typeof pendingToRunningMs === "number" ? pendingToRunningMs : runtimeMs
-}
-
 export function applyPendingCompressionDurations(state: SessionState): number {
     if (state.compressionTiming.pendingByCallId.size === 0) {
         return 0
