@@ -1,7 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { Logger } from "../lib/logger"
-import { getSubAgentId, mergeSubagentResult } from "../lib/subagents/subagent-results"
+import {
+    getSubAgentId,
+    isSubAgentTool,
+    mergeSubagentResult,
+} from "../lib/subagents/subagent-results"
 import { injectExtendedSubAgentResults } from "../lib/messages/inject/subagent-results"
 import { createSessionState } from "../lib/state"
 
@@ -32,6 +36,38 @@ test("getSubAgentId reads both sessionId and sessionID metadata keys", () => {
     assert.equal(getSubAgentId({ state: { metadata: { sessionId: "  c " } } }), "c")
     assert.equal(getSubAgentId({ state: { metadata: {} } }), null)
     assert.equal(getSubAgentId({ state: {} }), null)
+})
+
+test("isSubAgentTool accepts v1 task and v2 subagent", () => {
+    assert.equal(isSubAgentTool("task"), true)
+    assert.equal(isSubAgentTool("subagent"), true)
+    assert.equal(isSubAgentTool("read"), false)
+    assert.equal(isSubAgentTool(undefined), false)
+})
+
+test("injectExtendedSubAgentResults expands a v2 'subagent' tool part", async () => {
+    const state = createSessionState()
+    const logger = new Logger(false)
+    const part = {
+        type: "tool",
+        callID: "c1",
+        tool: "subagent",
+        state: {
+            status: "completed",
+            input: {},
+            output: "<task_result>\nplaceholder\n</task_result>",
+            metadata: { sessionID: "child" },
+        },
+    }
+    const messages = [
+        {
+            info: { id: "m1", sessionID: "ses", role: "assistant", time: { created: 1 } },
+            parts: [part],
+        },
+    ]
+    const client = { session: { context: async () => childRaw } }
+    await injectExtendedSubAgentResults(client as any, state, logger, messages as any, true)
+    assert.match((part.state as any).output, /CHILD RESULT/)
 })
 
 test("mergeSubagentResult replaces the task_result body", () => {

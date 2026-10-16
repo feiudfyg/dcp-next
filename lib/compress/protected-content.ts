@@ -9,6 +9,7 @@ import {
 import {
     buildSubagentResultText,
     getSubAgentId,
+    isSubAgentTool,
     mergeSubagentResult,
 } from "../subagents/subagent-results"
 import { fetchSessionMessages } from "./search"
@@ -154,7 +155,7 @@ export async function appendProtectedTools(
 
                     if (
                         allowSubAgents &&
-                        part.tool === "task" &&
+                        isSubAgentTool(part.tool) &&
                         part.state?.status === "completed" &&
                         typeof part.state?.output === "string"
                     ) {

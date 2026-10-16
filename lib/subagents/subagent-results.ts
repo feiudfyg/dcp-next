@@ -2,6 +2,10 @@ import type { WithParts } from "../state"
 
 const SUB_AGENT_RESULT_BLOCK_REGEX = /(<task_result>\s*)([\s\S]*?)(\s*<\/task_result>)/i
 
+export function isSubAgentTool(tool: string | undefined): boolean {
+    return tool === "task" || tool === "subagent"
+}
+
 export function getSubAgentId(part: any): string | null {
     const metadata = part?.state?.metadata
     const raw = metadata?.sessionId ?? metadata?.sessionID
