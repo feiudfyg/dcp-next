@@ -105,6 +105,87 @@ export function createSystemPromptHandler(
     }
 }
 
+interface PipelineDeps {
+    client: SdkClient
+    state: SessionState
+    logger: Logger
+    config: PluginConfig
+    prompts: PromptStore
+    hostPermissions: HostPermissionSnapshot
+}
+
+interface PipelineOptions {
+    refreshPermissions?: boolean
+    compactionSource?: WithParts[]
+    afterPermission?: () => void
+}
+
+/**
+ * The shared message pipeline for both the v1 (`chat.messages.transform`) and
+ * v2 (`session.hook("context")`) handlers. Keeping this single-sourced prevents
+ * the two hosts from drifting apart.
+ */
+async function runMessagePipeline(
+    deps: PipelineDeps,
+    messages: WithParts[],
+    options: PipelineOptions = {},
+): Promise<void> {
+    const { client, state, logger, config, prompts, hostPermissions } = deps
+
+    await checkSession(
+        client,
+        state,
+        logger,
+        messages,
+        config.manualMode.enabled,
+        options.compactionSource ?? messages,
+    )
+
+    if (options.refreshPermissions) {
+        await refreshHostPermissions(client, hostPermissions)
+    }
+
+    syncCompressPermissionState(state, config, hostPermissions, messages)
+
+    if (state.isSubAgent && !config.experimental.allowSubAgents) {
+        return
+    }
+
+    options.afterPermission?.()
+
+    stripHallucinations(messages)
+    cacheSystemPromptTokens(state, messages)
+    assignMessageRefs(state, messages)
+    syncCompressionBlocks(state, logger, messages)
+    syncToolCache(state, config, logger, messages)
+    buildToolIdList(state, messages)
+    prune(state, logger, config, messages)
+    await injectExtendedSubAgentResults(
+        client,
+        state,
+        logger,
+        messages,
+        config.experimental.allowSubAgents,
+    )
+    const compressionPriorities = buildPriorityMap(config, state, messages)
+    prompts.reload()
+    injectCompressNudges(
+        state,
+        config,
+        logger,
+        messages,
+        prompts.getRuntimePrompts(),
+        compressionPriorities,
+    )
+    injectMessageIds(state, config, messages, compressionPriorities)
+    applyPendingManualTrigger(state, messages, logger)
+    stripStaleMetadata(messages)
+
+    if (state.sessionId) {
+        await logger.saveContext(state.sessionId, messages)
+    }
+}
+
 export function createChatMessageTransformHandler(
     client: SdkClient,
     state: SessionState,
@@ -126,45 +207,10 @@ export function createChatMessageTransformHandler(
             })
         }
 
-        await checkSession(client, state, logger, output.messages, config.manualMode.enabled)
-
-        syncCompressPermissionState(state, config, hostPermissions, output.messages)
-
-        if (state.isSubAgent && !config.experimental.allowSubAgents) {
-            return
-        }
-
-        stripHallucinations(output.messages)
-        cacheSystemPromptTokens(state, output.messages)
-        assignMessageRefs(state, output.messages)
-        syncCompressionBlocks(state, logger, output.messages)
-        syncToolCache(state, config, logger, output.messages)
-        buildToolIdList(state, output.messages)
-        prune(state, logger, config, output.messages)
-        await injectExtendedSubAgentResults(
-            client,
-            state,
-            logger,
+        await runMessagePipeline(
+            { client, state, logger, config, prompts, hostPermissions },
             output.messages,
-            config.experimental.allowSubAgents,
         )
-        const compressionPriorities = buildPriorityMap(config, state, output.messages)
-        prompts.reload()
-        injectCompressNudges(
-            state,
-            config,
-            logger,
-            output.messages,
-            prompts.getRuntimePrompts(),
-            compressionPriorities,
-        )
-        injectMessageIds(state, config, output.messages, compressionPriorities)
-        applyPendingManualTrigger(state, output.messages, logger)
-        stripStaleMetadata(output.messages)
-
-        if (state.sessionId) {
-            await logger.saveContext(state.sessionId, output.messages)
-        }
     }
 }
 
@@ -497,72 +543,37 @@ export function createContextHookHandler(
 
         const normalizedSession = normalizeSessionMessages(sessionMessages, sessionID)
 
-        await checkSession(
-            client,
-            state,
-            logger,
+        await runMessagePipeline(
+            { client, state, logger, config, prompts, hostPermissions },
             messages,
-            config.manualMode.enabled,
-            normalizedSession,
+            {
+                refreshPermissions: true,
+                compactionSource: normalizedSession,
+                afterPermission: () => {
+                    const effectivePermission =
+                        state.sessionId === sessionID
+                            ? compressPermission(state, config)
+                            : config.compress.permission
+
+                    if (
+                        effectivePermission !== "deny" &&
+                        !isInternalAgentCall(readSystemTexts(event))
+                    ) {
+                        prompts.reload()
+                        const newPrompt = renderSystemPrompt(
+                            prompts.getRuntimePrompts(),
+                            buildProtectedToolsExtension(config.compress.protectedTools),
+                            !!state.manualMode,
+                            state.isSubAgent && config.experimental.allowSubAgents,
+                        )
+                        appendSystemPrompt(event, newPrompt)
+                    }
+                },
+            },
         )
-
-        await refreshHostPermissions(client, hostPermissions)
-        syncCompressPermissionState(state, config, hostPermissions, messages)
-
-        if (state.isSubAgent && !config.experimental.allowSubAgents) {
-            return
-        }
-
-        const effectivePermission =
-            state.sessionId === sessionID
-                ? compressPermission(state, config)
-                : config.compress.permission
-
-        if (effectivePermission !== "deny" && !isInternalAgentCall(readSystemTexts(event))) {
-            prompts.reload()
-            const newPrompt = renderSystemPrompt(
-                prompts.getRuntimePrompts(),
-                buildProtectedToolsExtension(config.compress.protectedTools),
-                !!state.manualMode,
-                state.isSubAgent && config.experimental.allowSubAgents,
-            )
-            appendSystemPrompt(event, newPrompt)
-        }
-
-        stripHallucinations(messages)
-        cacheSystemPromptTokens(state, messages)
-        assignMessageRefs(state, messages)
-        syncCompressionBlocks(state, logger, messages)
-        syncToolCache(state, config, logger, messages)
-        buildToolIdList(state, messages)
-        prune(state, logger, config, messages)
-        await injectExtendedSubAgentResults(
-            client,
-            state,
-            logger,
-            messages,
-            config.experimental.allowSubAgents,
-        )
-        const compressionPriorities = buildPriorityMap(config, state, messages)
-        prompts.reload()
-        injectCompressNudges(
-            state,
-            config,
-            logger,
-            messages,
-            prompts.getRuntimePrompts(),
-            compressionPriorities,
-        )
-        injectMessageIds(state, config, messages, compressionPriorities)
-        applyPendingManualTrigger(state, messages, logger)
-        stripStaleMetadata(messages)
 
         const rebuilt = internalToRequest(messages, requestMessages)
         event.messages = rebuilt
-
-        if (state.sessionId) {
-            await logger.saveContext(state.sessionId, messages)
-        }
     }
 }
 
