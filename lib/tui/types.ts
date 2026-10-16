@@ -28,19 +28,30 @@ export type ThemeColor = Exclude<keyof Theme, "thinkingOpacity">
 export type DialogSize = "medium" | "large" | "xlarge"
 
 export function resolveTheme(theme: Plugin.Context["theme"]): Theme {
+    const source = theme as any
+    const base: RGBA = source?.text?.base
+
+    const pick = (keys: Array<string | number>): RGBA => {
+        let current: any = source
+        for (const key of keys) {
+            current = current?.[key]
+        }
+        return (current ?? base) as RGBA
+    }
+
     return {
-        primary: theme.text.action.primary.base,
-        accent: theme.hue.accent[500],
-        success: theme.text.feedback.success.base,
-        error: theme.text.feedback.error.base,
-        info: theme.text.feedback.info.base,
-        warning: theme.text.feedback.warning.base,
-        borderSubtle: theme.border.base,
-        background: theme.background.base,
-        backgroundElement: theme.background.raised.base,
-        selectedListItemText: theme.background.raised.high,
-        text: theme.text.base,
-        textMuted: theme.text.muted,
+        primary: pick(["text", "action", "primary", "base"]),
+        accent: pick(["hue", "accent", 500]),
+        success: pick(["text", "feedback", "success", "base"]),
+        error: pick(["text", "feedback", "error", "base"]),
+        info: pick(["text", "feedback", "info", "base"]),
+        warning: pick(["text", "feedback", "warning", "base"]),
+        borderSubtle: pick(["border", "base"]),
+        background: pick(["background", "base"]),
+        backgroundElement: pick(["background", "raised", "base"]),
+        selectedListItemText: pick(["background", "raised", "high"]),
+        text: base,
+        textMuted: pick(["text", "muted"]),
     }
 }
 

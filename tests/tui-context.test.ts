@@ -36,6 +36,15 @@ test("resolveTheme maps v2 theme tokens onto the flat DCP theme", () => {
     assert.equal(theme.textMuted, "MUTED")
 })
 
+test("resolveTheme falls back to text.base when tokens are missing", () => {
+    const theme = resolveTheme({ text: { base: "BASE" } } as any)
+    assert.equal(theme.text, "BASE")
+    assert.equal(theme.primary, "BASE")
+    assert.equal(theme.accent, "BASE")
+    assert.equal(theme.textMuted, "BASE")
+    assert.equal(theme.background, "BASE")
+})
+
 function makeContext() {
     const registrations: any[] = []
     const navigations: any[] = []

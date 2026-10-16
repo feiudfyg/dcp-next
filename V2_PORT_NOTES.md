@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (165 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `npm run typecheck` · `npm test` (166 tests) · `npm run build` · `npx prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -75,6 +75,9 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] Compaction reset detects the marker from `session.context()` (not just the request projection).
 - [x] Subagent tool recognised under both v1 (`task`) and v2 (`subagent`) names; protected by default. Verified live (subagent output kept in a stored block summary).
 - [x] v1 + v2 context handlers share one `runMessagePipeline` (no drift).
+- [ ] TUI: cannot be runtime-verified headless (host TUI exits with `chdir` on an
+      empty path without a real terminal). Covered by `tui-context`/`tui-setup` unit
+      tests + a static audit of every `api.*` call against the compat layer.
 - [ ] Long-session / compaction rollover not yet exercised in a live run (needs E2E).
 - [ ] `experimental.text.complete` hallucination stripping removed (minor; no v2 equivalent).
 - Intentional removals: npm auto-update, secure-mode auth interceptor.
@@ -129,3 +132,5 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
   `protected-content`; `subagent` added to the default protected-tools list.
 - Both context handlers now call one `runMessagePipeline` (v2 adds
   `refreshPermissions`, `compactionSource`, and an `afterPermission` system-prompt hook).
+- `resolveTheme` reads v2 theme tokens defensively (falls back to `text.base`),
+  so a sparse/different theme cannot crash panel setup.
