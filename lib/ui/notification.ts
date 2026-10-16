@@ -243,12 +243,12 @@ function resolveNotify(sink: Notify | SdkClient): Notify {
         }
     }
     if (typeof candidate.session?.synthetic === "function") {
-        notify.message = (sessionID: string, text: string) => {
-            void candidate.session.synthetic({ sessionID, text })
+        notify.message = async (sessionID: string, text: string) => {
+            await candidate.session.synthetic({ sessionID, text })
         }
     } else if (typeof candidate.session?.prompt === "function") {
-        notify.message = (sessionID: string, text: string) => {
-            void candidate.session.prompt({
+        notify.message = async (sessionID: string, text: string) => {
+            await candidate.session.prompt({
                 path: { id: sessionID },
                 body: {
                     noReply: true,

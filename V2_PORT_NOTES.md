@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (134 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `npm run typecheck` · `npm test` (159 tests) · `npm run build` · `npx prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -64,7 +64,9 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] TUI adapter unit tests (`resolveTheme`, `createTuiApi`) + `tui.tsx` setup smoke test.
 - [x] Isolated v2 E2E: compress → block with `durationMs`, follow-up turn rebuilds the pruned request.
 - [x] Host/agent compress permission synced from `context.agent.list()` (nudges respect agent deny).
-- [ ] Long-session / compaction / subagent correlation not stress-tested.
+- [x] Subagent-result expansion works on v2 (`task` tool metadata uses `sessionID`, not `sessionId`).
+- [x] Notification sink bridge (`session.synthetic`/toast) unit-tested; delivery failures are caught (no unhandled rejection).
+- [ ] Long-session / compaction correlation not stress-tested (needs E2E + key).
 - [ ] `experimental.text.complete` hallucination stripping removed (minor; no v2 equivalent).
 - Intentional removals: npm auto-update, secure-mode auth interceptor.
 
@@ -103,3 +105,7 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - system/effort control messages skipped internally and re-inserted verbatim in
   `internalToRequest` (fixes OpenAI Chat "only support text and media").
 - `2bd03d2` agent permissions mapped into the host snapshot (v2 `agent.list()`).
+- `getSubAgentId` accepts both `metadata.sessionId` (v1) and `metadata.sessionID` (v2);
+  `injectExtendedSubAgentResults` + notification sink covered by new tests.
+- `resolveNotify` now returns (awaits) the delivery promise instead of `void`, so
+  `sendIgnoredMessage`'s try/catch actually catches failures.

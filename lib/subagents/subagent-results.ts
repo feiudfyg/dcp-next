@@ -3,12 +3,13 @@ import type { WithParts } from "../state"
 const SUB_AGENT_RESULT_BLOCK_REGEX = /(<task_result>\s*)([\s\S]*?)(\s*<\/task_result>)/i
 
 export function getSubAgentId(part: any): string | null {
-    const sessionId = part?.state?.metadata?.sessionId
-    if (typeof sessionId !== "string") {
+    const metadata = part?.state?.metadata
+    const raw = metadata?.sessionId ?? metadata?.sessionID
+    if (typeof raw !== "string") {
         return null
     }
 
-    const value = sessionId.trim()
+    const value = raw.trim()
     return value.length > 0 ? value : null
 }
 
