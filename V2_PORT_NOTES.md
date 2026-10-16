@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (161 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `npm run typecheck` · `npm test` (163 tests) · `npm run build` · `npx prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -114,3 +114,6 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
   the v2 context hook passes the normalized `session.context()` transcript so
   compaction resets fire even when the request projection lacks the marker.
   Tests: `tests/compaction-reset.test.ts`.
+- Long-transcript alignment stress test (`tests/v2-alignment-stress.test.ts`):
+  a 30-turn id-less request/session pair (with interleaved `role:"tool"` messages)
+  maps every turn to the right session id and rebuilds one tool message per call.
