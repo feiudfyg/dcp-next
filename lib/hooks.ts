@@ -495,7 +495,16 @@ export function createContextHookHandler(
 
         const messages: WithParts[] = requestToInternal(requestMessages, sessionMessages, sessionID)
 
-        await checkSession(client, state, logger, messages, config.manualMode.enabled)
+        const normalizedSession = normalizeSessionMessages(sessionMessages, sessionID)
+
+        await checkSession(
+            client,
+            state,
+            logger,
+            messages,
+            config.manualMode.enabled,
+            normalizedSession,
+        )
 
         await refreshHostPermissions(client, hostPermissions)
         syncCompressPermissionState(state, config, hostPermissions, messages)

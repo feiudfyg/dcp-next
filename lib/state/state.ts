@@ -26,6 +26,7 @@ export const checkSession = async (
     logger: Logger,
     messages: WithParts[],
     manualModeDefault: boolean,
+    compactionSource: WithParts[] = messages,
 ): Promise<void> => {
     const lastUserMessage = getLastUserMessage(messages)
     if (!lastUserMessage) {
@@ -44,13 +45,14 @@ export const checkSession = async (
                 logger,
                 messages,
                 manualModeDefault,
+                compactionSource,
             )
         } catch (err: any) {
             logger.error("Failed to initialize session state", { error: err.message })
         }
     }
 
-    const lastCompactionTimestamp = findLastCompactionTimestamp(messages)
+    const lastCompactionTimestamp = findLastCompactionTimestamp(compactionSource)
     if (lastCompactionTimestamp > state.lastCompaction) {
         state.lastCompaction = lastCompactionTimestamp
         resetOnCompaction(state)
@@ -150,6 +152,7 @@ export async function ensureSessionInitialized(
     logger: Logger,
     messages: WithParts[],
     manualModeEnabled: boolean,
+    compactionSource: WithParts[] = messages,
 ): Promise<void> {
     if (state.sessionId === sessionId) {
         return
@@ -166,7 +169,7 @@ export async function ensureSessionInitialized(
     state.isSubAgent = isSubAgent
     // logger.info("isSubAgent = " + isSubAgent)
 
-    state.lastCompaction = findLastCompactionTimestamp(messages)
+    state.lastCompaction = findLastCompactionTimestamp(compactionSource)
     state.currentTurn = countTurns(state, messages)
     state.nudges.turnNudgeAnchors = collectTurnNudgeAnchors(messages)
 

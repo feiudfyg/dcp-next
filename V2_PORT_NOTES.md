@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (159 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `npm run typecheck` · `npm test` (161 tests) · `npm run build` · `npx prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -66,6 +66,7 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] Host/agent compress permission synced from `context.agent.list()` (nudges respect agent deny).
 - [x] Subagent-result expansion works on v2 (`task` tool metadata uses `sessionID`, not `sessionId`).
 - [x] Notification sink bridge (`session.synthetic`/toast) unit-tested; delivery failures are caught (no unhandled rejection).
+- [x] Compaction reset detects the marker from `session.context()` (not just the request projection).
 - [ ] Long-session / compaction correlation not stress-tested (needs E2E + key).
 - [ ] `experimental.text.complete` hallucination stripping removed (minor; no v2 equivalent).
 - Intentional removals: npm auto-update, secure-mode auth interceptor.
@@ -109,3 +110,7 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
   `injectExtendedSubAgentResults` + notification sink covered by new tests.
 - `resolveNotify` now returns (awaits) the delivery promise instead of `void`, so
   `sendIgnoredMessage`'s try/catch actually catches failures.
+- `checkSession`/`ensureSessionInitialized` take an optional `compactionSource`;
+  the v2 context hook passes the normalized `session.context()` transcript so
+  compaction resets fire even when the request projection lacks the marker.
+  Tests: `tests/compaction-reset.test.ts`.
