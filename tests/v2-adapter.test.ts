@@ -1,6 +1,47 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { internalToRequest, normalizeSessionMessages, requestToInternal } from "../lib/v2/messages"
+import { filterDcpNotificationMessages } from "../lib/v2/messages"
+import { isDcpNotificationText } from "../lib/dcp-marker"
+
+test("isDcpNotificationText recognises DCP notifications", () => {
+    assert.equal(isDcpNotificationText("▣ DCP | -1K removed, +200 summary"), true)
+    assert.equal(isDcpNotificationText("  DCP | -1K removed"), true)
+    assert.equal(isDcpNotificationText("hello world"), false)
+    assert.equal(isDcpNotificationText(""), false)
+})
+
+test("filterDcpNotificationMessages drops DCP notifications from the request", () => {
+    const request = [
+        { id: "m1", role: "user", content: [{ type: "text", text: "hi" }] },
+        {
+            id: "m2",
+            role: "user",
+            content: [{ type: "text", text: "▣ DCP | -1K removed, +200 summary" }],
+        },
+        { id: "m3", role: "assistant", content: [{ type: "text", text: "ok" }] },
+    ]
+    const filtered = filterDcpNotificationMessages(request as any)
+    assert.deepEqual(
+        filtered.map((m) => m.id),
+        ["m1", "m3"],
+    )
+})
+
+test("normalizeSessionMessages skips DCP notification synthetics", () => {
+    const norm = normalizeSessionMessages(
+        [
+            { type: "user", id: "u", text: "hi", time: { created: 1 } },
+            { type: "synthetic", id: "s1", text: "▣ DCP | -1K removed", time: { created: 2 } },
+            { type: "synthetic", id: "s2", text: "keep me", time: { created: 3 } },
+        ],
+        "ses",
+    )
+    assert.deepEqual(
+        norm.map((m) => m.info.id),
+        ["u", "s2"],
+    )
+})
 
 test("requestToInternal maps user/assistant and folds tool calls + results", () => {
     const request = [

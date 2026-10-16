@@ -6,6 +6,7 @@ import type {
     DcpTokenUsage,
     WithParts,
 } from "../state"
+import { isDcpNotificationText } from "../dcp-marker"
 
 /**
  * Structural views of the OpenCode v2 data that DCP consumes.
@@ -252,6 +253,10 @@ export function normalizeSessionMessages(
             continue
         }
 
+        if (sm.type === "synthetic" && isDcpNotificationText(String(sm.text ?? ""))) {
+            continue
+        }
+
         switch (sm.type) {
             case "user":
             case "synthetic":
@@ -291,6 +296,31 @@ function requestPartToInternal(part: RequestContentPart): DcpPart {
             // preserved verbatim so the rebuild is lossless.
             return { type: "opaque", value: part }
     }
+}
+
+function requestMessageText(message: RequestMessage | undefined): string {
+    if (!message || !Array.isArray(message.content)) {
+        return ""
+    }
+    let text = ""
+    for (const part of message.content) {
+        if (part && part.type === "text" && typeof part.text === "string") {
+            text += part.text
+        }
+    }
+    return text
+}
+
+/**
+ * Drop DCP's own notification messages from the outgoing request. On hosts
+ * without a toast channel DCP notifies via `session.synthetic`, which persists
+ * in the transcript; forwarding it to the model wastes context every turn.
+ */
+export function filterDcpNotificationMessages<T extends RequestMessage>(messages: T[]): T[] {
+    if (!Array.isArray(messages)) {
+        return []
+    }
+    return messages.filter((message) => !isDcpNotificationText(requestMessageText(message)))
 }
 
 /**

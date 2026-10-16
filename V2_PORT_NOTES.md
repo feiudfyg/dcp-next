@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (166 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `npm run typecheck` · `npm test` (169 tests) · `npm run build` · `npx prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -75,6 +75,7 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] Compaction reset detects the marker from `session.context()` (not just the request projection).
 - [x] Subagent tool recognised under both v1 (`task`) and v2 (`subagent`) names; protected by default. Verified live (subagent output kept in a stored block summary).
 - [x] v1 + v2 context handlers share one `runMessagePipeline` (no drift).
+- [x] DCP's own `session.synthetic` notifications are excluded from the outgoing request (they persist in the transcript and were re-sent to the model every turn).
 - [ ] TUI: cannot be runtime-verified headless (host TUI exits with `chdir` on an
       empty path without a real terminal). Covered by `tui-context`/`tui-setup` unit
       tests + a static audit of every `api.*` call against the compat layer.
@@ -88,8 +89,11 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
   real key via env: `DEEPSEEK_API_KEY` (the v2 `auth.json` format is not honoured).
 - Sandbox `opencode.json` defines `provider.deepseek.models.deepseek-flash` with
   variants `max` and `medium`; tests run `-m deepseek/deepseek-flash#medium`.
-- Harness: `C:\Users\24635\AppData\Local\Temp\opencode\e2e-v2.ps1 -Phase {1,2}`
-  sets the key, runs the sandbox, then dumps DCP blocks (ct/st/durMs).
+- Harness: `E:\CodeProjects\opencode-v2-test\e2e-v2.ps1` (phases 1-4) and
+  `e2e-long.ps1` (N-turn session). Both set the key and dump DCP blocks.
+- Note: the provided key is a rate-limited "governor"; bursts of runs eventually
+  return `HTTP 401 Authentication Fails (governor)` — a provider-side limit, not
+  a DCP defect. Wait it out or use another key.
 
 ## Iteration plan (current)
 
@@ -134,3 +138,10 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
   `refreshPermissions`, `compactionSource`, and an `afterPermission` system-prompt hook).
 - `resolveTheme` reads v2 theme tokens defensively (falls back to `text.base`),
   so a sparse/different theme cannot crash panel setup.
+- `lib/dcp-marker.ts` marks DCP notifications; `filterDcpNotificationMessages`
+  drops them from the v2 request and `normalizeSessionMessages` skips them
+  (found via a live request dump: 19 synthetic "▣ DCP | …" user messages were
+  being re-sent every turn). Tests in `tests/v2-adapter.test.ts`.
+- Live 12-turn session (`e2e-long.ps1`): 12 sequential blocks, all with
+  durations, no adapter/pipeline warnings; stable `msg_*` ids (id-based
+  correlation confirmed, positional is a fallback).

@@ -4,6 +4,7 @@ import type { SdkClient } from "../sdk-types"
 import { formatProgressBar, formatTokenCount } from "./utils"
 import type { PluginConfig } from "../config"
 import { getActiveSummaryTokenUsage } from "../state/utils"
+import { DCP_NOTIFICATION_PREFIX } from "../dcp-marker"
 
 /**
  * Host capability for surfacing DCP output. The TUI supplies `toast`; the
@@ -151,7 +152,7 @@ export async function sendCompressNotification(
 
     const totalActiveSummaryTkns = getActiveSummaryTokenUsage(state)
     const totalGross = state.stats.totalPruneTokens + state.stats.pruneTokenCounter
-    const notificationHeader = `▣ DCP | ${formatCompressionMetrics(totalGross, totalActiveSummaryTkns)}`
+    const notificationHeader = `${DCP_NOTIFICATION_PREFIX} ${formatCompressionMetrics(totalGross, totalActiveSummaryTkns)}`
 
     if (config.pruneNotification === "minimal") {
         message = `${notificationHeader} — ${compressionLabel}`

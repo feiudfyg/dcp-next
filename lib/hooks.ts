@@ -436,7 +436,12 @@ export function createEventHandler(state: SessionState, logger: Logger) {
     }
 }
 
-import { internalToRequest, normalizeSessionMessages, requestToInternal } from "./v2/messages"
+import {
+    filterDcpNotificationMessages,
+    internalToRequest,
+    normalizeSessionMessages,
+    requestToInternal,
+} from "./v2/messages"
 import { resolveModelContextLimit } from "./v2/model"
 
 interface SystemPartLike {
@@ -531,9 +536,11 @@ export function createContextHookHandler(
             logger.warn("Failed to load session context", { error: error?.message })
         }
 
-        const requestMessages = Array.isArray(event.messages)
-            ? (event.messages as Parameters<typeof requestToInternal>[0])
-            : []
+        const requestMessages = filterDcpNotificationMessages(
+            Array.isArray(event.messages)
+                ? (event.messages as Parameters<typeof requestToInternal>[0])
+                : [],
+        )
 
         if (requestMessages.length === 0) {
             return
