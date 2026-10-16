@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (163 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `npm run typecheck` · `npm test` (165 tests) · `npm run build` · `npx prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -36,18 +36,24 @@ default branch), with no obvious defects/regressions versus the v1 branch
 
 ## Isolated v2 sandbox (for tests)
 
-- Root: `E:\CodeProjects\opencode-v2-test` (opencode `@opencode/cli@2.0.28`).
-- Launcher: `oc2.ps1` (sets XDG only). Hardened runner:
-  `C:\Users\24635\AppData\Local\Temp\opencode\oc2run.ps1`
-    - redirects `HOME`/`USERPROFILE`/`APPDATA`/`LOCALAPPDATA` + XDG into the sandbox;
-    - .NET process with `WaitForExit(timeout)` + `Kill($true)` → never hangs on the
-      background service; returns in ~0.4s.
-    - Usage: `pwsh -NoProfile -File oc2run.ps1 -TimeoutMs 150000 -WorkDir <dir> run --print-logs --log-level warn -m opencode/big-pickle --auto "<prompt>"`
-- Sandbox config: `home\.config\opencode\opencode.json` →
-  `{ "model": "opencode/big-pickle", "plugins": ["E:/CodeProjects/dcp-next"] }`.
-- DCP state lands in `home\.local\share\opencode\storage\plugin\dcp\ses_*.json`.
-- Verified: plugin loads, system prompt injected, prune/rebuild works, `compress`
-  executes and persists a real block, follow-up turn OK.
+- Root: `E:\CodeProjects\opencode-v2-test` (opencode `@opencode/cli@2.0.28`). **Durable**
+  harness (survives temp cleanup): `oc2run.ps1` + `e2e-v2.ps1` live in this dir.
+- API key: `.secrets\deepseek.key` (git-ignored; dir is not a repo) and the persistent
+  user env var `DEEPSEEK_API_KEY`. `e2e-v2.ps1` resolves key as `-Key` → env → file.
+- Runner `oc2run.ps1`: redirects HOME/USERPROFILE/APPDATA/LOCALAPPDATA + XDG into
+  `home`; .NET process with `WaitForExit(timeout)` + `Kill($true)` and async
+  `ReadToEndAsync` capture (the background service would hang a normal wait).
+  Auto-appends `--standalone` for `run`.
+- Usage:
+  `pwsh -NoProfile -File E:\CodeProjects\opencode-v2-test\e2e-v2.ps1 -Phase {1,2,3,4}`
+  phases: 1 multi-tool, 2 `/dcp-compress`, 3 subagent, 4 ping. After the run it dumps
+  DCP blocks (id/active/range/ct/st/dur/topic) from the sandbox state JSON.
+- Sandbox config `home\.config\opencode\opencode.json`: model `deepseek/deepseek-flash#medium`,
+  `plugins: ["E:/CodeProjects/dcp-next"]`.
+- Sessions live in `home\.local\share\opencode\opencode.db` (SQLite); inspect with
+  `node -e` + `node:sqlite` (read-only). DCP state: `storage\plugin\dcp\ses_*.json`.
+- Observed v2 tool names: `read`, `execute`, `write`, `glob`, `subagent`
+  (v1 called the subagent tool `task`). v2 `subagent` tool metadata: `{ sessionID, status }`.
 
 ## Status checklist
 
@@ -67,7 +73,9 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - [x] Subagent-result expansion works on v2 (`task` tool metadata uses `sessionID`, not `sessionId`).
 - [x] Notification sink bridge (`session.synthetic`/toast) unit-tested; delivery failures are caught (no unhandled rejection).
 - [x] Compaction reset detects the marker from `session.context()` (not just the request projection).
-- [ ] Long-session / compaction correlation not stress-tested (needs E2E + key).
+- [x] Subagent tool recognised under both v1 (`task`) and v2 (`subagent`) names; protected by default. Verified live (subagent output kept in a stored block summary).
+- [x] v1 + v2 context handlers share one `runMessagePipeline` (no drift).
+- [ ] Long-session / compaction rollover not yet exercised in a live run (needs E2E).
 - [ ] `experimental.text.complete` hallucination stripping removed (minor; no v2 equivalent).
 - Intentional removals: npm auto-update, secure-mode auth interceptor.
 
@@ -117,3 +125,7 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 - Long-transcript alignment stress test (`tests/v2-alignment-stress.test.ts`):
   a 30-turn id-less request/session pair (with interleaved `role:"tool"` messages)
   maps every turn to the right session id and rebuilds one tool message per call.
+- `isSubAgentTool` accepts `task`/`subagent`; used by the subagent injector and
+  `protected-content`; `subagent` added to the default protected-tools list.
+- Both context handlers now call one `runMessagePipeline` (v2 adds
+  `refreshPermissions`, `compactionSource`, and an `afterPermission` system-prompt hook).
