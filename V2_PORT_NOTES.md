@@ -12,7 +12,7 @@ default branch), with no obvious defects/regressions versus the v1 branch
 ## Repo facts
 
 - Repo: `E:\CodeProjects\dcp-next` (branch `v2`). v1 preserved at `E:\CodeProjects\dcp-next-v1`.
-- Verify: `npm run typecheck` · `npm test` (161 tests) · `npm run build` · `npx prettier --check .`.
+- Verify: `pnpm run typecheck` · `pnpm test` (161 tests) · `pnpm run build` · `pnpm exec prettier --check .`.
 - v2 loads the plugin **from source** (`entrypoint=file:///…/index.ts`), so edits
   take effect without rebuilding; `dist/` is only for packaged use.
 
@@ -110,7 +110,7 @@ Legend: [x] done · [~] partial · [ ] todo · [!] regression
 ## Command recipes
 
 - Typecheck+test+build+format:
-  `npm run typecheck; npm test; npm run build; npx prettier --check .`
+  `pnpm run typecheck; pnpm test; pnpm run build; pnpm exec prettier --check .`
 - Inspect a sandbox DCP session:
   `node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));console.log(JSON.stringify(j.prune.messages.blocksById,null,2))" <path>`
 

@@ -5,7 +5,7 @@ Dev tool for previewing the effective (post-override) DCP prompts.
 ## Usage
 
 ```bash
-npm run dcp -- [options]
+pnpm run dcp -- [options]
 ```
 
 ## Options
@@ -25,9 +25,9 @@ Prompt keys: `system`, `compress-range`, `compress-message`, `context-limit-nudg
 ## Examples
 
 ```bash
-npm run dcp -- --list
-npm run dcp -- --show compress-range
-npm run dcp -- --system-all
+pnpm run dcp -- --list
+pnpm run dcp -- --show compress-range
+pnpm run dcp -- --system-all
 ```
 
 ## Purpose

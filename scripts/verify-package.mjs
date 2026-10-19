@@ -42,6 +42,8 @@ const forbiddenTarballPatterns = [
     /^notes\//,
     /^\.github\//,
     /^package-lock\.json$/,
+    /^pnpm-lock\.yaml$/,
+    /^pnpm-workspace\.yaml$/,
     /^tsconfig\.json$/,
 ]
 
@@ -204,14 +206,15 @@ function validateRuntimeImportGraph() {
 }
 
 function validatePackedFiles() {
-    const output = execSync("npm pack --dry-run --json", {
+    const output = execSync("pnpm pack --dry-run --json", {
         cwd: root,
         encoding: "utf8",
     })
 
-    const [result] = JSON.parse(output)
+    const parsed = JSON.parse(output)
+    const result = Array.isArray(parsed) ? parsed[0] : parsed
     if (!result || !Array.isArray(result.files)) {
-        fail("npm pack --dry-run --json did not return file metadata")
+        fail("pnpm pack --dry-run --json did not return file metadata")
     }
 
     const packedPaths = result.files.map((file) => file.path)
@@ -229,7 +232,7 @@ function validatePackedFiles() {
     }
 
     console.log(`package verification passed for ${result.name}@${result.version}`)
-    console.log(`tarball entries: ${result.entryCount}`)
+    console.log(`tarball entries: ${result.entryCount ?? result.files.length}`)
 }
 
 assertRepoFilesExist()

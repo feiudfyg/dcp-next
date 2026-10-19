@@ -9,6 +9,7 @@ dist/
 # Logs
 *.log
 npm-debug.log*
+pnpm-debug.log*
 
 # Environment variables
 .env

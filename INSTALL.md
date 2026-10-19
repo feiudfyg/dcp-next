@@ -34,7 +34,7 @@ Run and record the output of:
 ```bash
 opencode --version
 node --version
-npm --version
+pnpm --version
 git --version
 ```
 
@@ -42,7 +42,7 @@ Requirements:
 
 - OpenCode **v2**. This fork uses the v2 `plugins` array and the v2 plugin API; it will
   not work on OpenCode v1.
-- Node.js and npm capable of building the project.
+- Node.js and pnpm capable of building the project.
 - Git.
 
 If OpenCode is v1, stop and explain that the user must install OpenCode v2 first.
@@ -54,13 +54,13 @@ Choose the install directory, then run:
 ```bash
 git clone https://github.com/feiudfyg/dcp-next.git <install-directory>
 cd <install-directory>
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 ```
 
 Notes:
 
-- Use `npm install` only when `npm ci` fails because the lockfile is out of sync.
+- Use `pnpm install` without `--frozen-lockfile` only when the lockfile is out of sync.
 - Run the build even though OpenCode v2 can load the TypeScript entry directly. It
   validates the checkout and produces the packaged `dist/` output.
 - Do not copy only `index.ts` or `dist/`. The plugin also needs `lib/`, `prompts/`,
@@ -69,9 +69,9 @@ Notes:
 Optional verification in the checkout:
 
 ```bash
-npm test
-npm run typecheck
-npm run verify:package
+pnpm test
+pnpm run typecheck
+pnpm run verify:package
 ```
 
 ## 4. Add the plugin to OpenCode
@@ -170,8 +170,8 @@ From the checkout:
 
 ```bash
 git pull --ff-only
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 opencode service restart
 ```
 
@@ -201,7 +201,7 @@ or tag before building.
 ### The plugin loads but `/dcp-compress` or `/dcp-panel` is missing
 
 - Confirm this is the terminal TUI, not a non-interactive `opencode run` session.
-- Re-run `npm run build` and restart both the service and the TUI.
+- Re-run `pnpm run build` and restart both the service and the TUI.
 - Check that `tui.tsx` and the `lib/` directory are present in the checkout.
 - DCP commands can be disabled in `~/.config/opencode/dcp.jsonc`; check
   `commands.enabled` and `compress.permission` (a `deny` value suppresses the compress
@@ -216,8 +216,8 @@ or tag before building.
 
 ### Build failures
 
-- Confirm `npm ci` completed in the checkout.
-- Make sure the shell is using a supported Node.js/npm version.
+- Confirm `pnpm install --frozen-lockfile` completed in the checkout.
+- Make sure the shell is using a supported Node.js/pnpm version.
 - Do not run the plugin from a partially copied directory; re-clone if necessary.
 
 ## Safety rules for the agent

@@ -18,8 +18,8 @@ For a step-by-step, agent-oriented installation and verification guide, see
 [INSTALL.md](INSTALL.md).
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 Then point OpenCode's `plugins` configuration at this local checkout (for example
