@@ -42,7 +42,8 @@ Requirements:
 
 - OpenCode **v2**. This fork uses the v2 `plugins` array and the v2 plugin API; it will
   not work on OpenCode v1.
-- Node.js and pnpm capable of building the project.
+- Node.js and pnpm capable of building the project. The repository pins
+  `pnpm@12.14.0` in `package.json`.
 - Git.
 
 If OpenCode is v1, stop and explain that the user must install OpenCode v2 first.
@@ -81,9 +82,9 @@ Use the **absolute path to the repository root**, not to `index.ts`, `dist/index
 
 ### Global configuration (recommended)
 
-The default global config is `~/.config/opencode/opencode.json` or
-`~/.config/opencode/opencode.jsonc` (`~` is `%USERPROFILE%` on Windows). If
-`OPENCODE_CONFIG` is set, edit the file it points to.
+The global config is under `$XDG_CONFIG_HOME/opencode` (default
+`~/.config/opencode`) and is named `opencode.json` or `opencode.jsonc` (`~` is
+`%USERPROFILE%` on Windows). If `OPENCODE_CONFIG` is set, edit the file it points to.
 
 Merge this entry into the existing `plugins` array; do not replace the array:
 
@@ -144,9 +145,11 @@ Then, in the OpenCode TUI:
 
 1. Confirm the slash command `/dcp-compress` is available.
 2. Confirm `/dcp-panel` opens the DCP panel.
-3. On first use, DCP creates its own config at `~/.config/opencode/dcp.jsonc`. Its
+3. On first use, DCP creates its own config at
+   `$XDG_CONFIG_HOME/opencode/dcp.jsonc` (default `~/.config/opencode/dcp.jsonc`). Its
    presence, and a DCP state file under
-   `~/.local/share/opencode/storage/plugin/dcp/`, are good signs that the plugin is
+   `$XDG_DATA_HOME/opencode/storage/plugin/dcp/` (default
+   `~/.local/share/opencode/storage/plugin/dcp/`), are good signs that the plugin is
    running.
 
 If `opencode plugin list` does not show `opencode-dcp`, fix that before testing
@@ -184,9 +187,10 @@ or tag before building.
 2. Restart OpenCode (`opencode service restart`).
 3. Optionally delete the checkout.
 4. Optionally delete DCP user data, only with the user's approval:
-    - config: `~/.config/opencode/dcp.jsonc`
-    - state: `~/.local/share/opencode/storage/plugin/dcp/`
-    - prompt overrides/defaults: `~/.config/opencode/dcp-prompts/`
+    - config: `$XDG_CONFIG_HOME/opencode/dcp.jsonc` (default `~/.config/opencode`)
+    - state: `$XDG_DATA_HOME/opencode/storage/plugin/dcp/` (default
+      `~/.local/share/opencode`)
+    - prompt overrides/defaults: the global config directory under `dcp-prompts/`
 
 ## Troubleshooting
 
@@ -203,9 +207,8 @@ or tag before building.
 - Confirm this is the terminal TUI, not a non-interactive `opencode run` session.
 - Re-run `pnpm run build` and restart both the service and the TUI.
 - Check that `tui.tsx` and the `lib/` directory are present in the checkout.
-- DCP commands can be disabled in `~/.config/opencode/dcp.jsonc`; check
-  `commands.enabled` and `compress.permission` (a `deny` value suppresses the compress
-  command and tool).
+- DCP commands can be disabled in the global DCP config; check `commands.enabled` and
+  `compress.permission` (a `deny` value suppresses the compress command and tool).
 
 ### Compression never triggers
 
