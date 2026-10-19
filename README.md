@@ -14,6 +14,8 @@ Automatically reduces token usage in OpenCode by managing conversation context.
 ## Installation
 
 This fork is not published to npm and does not auto-update from any upstream registry.
+For a step-by-step, agent-oriented installation and verification guide, see
+[INSTALL.md](INSTALL.md).
 
 ```bash
 npm install

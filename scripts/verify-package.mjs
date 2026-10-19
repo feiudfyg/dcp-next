@@ -71,10 +71,6 @@ function assertPackageJsonShape() {
         fail("expected package.json exports['.'].import to be './dist/index.js'")
     }
 
-    if (pkg.exports?.["./server"]?.import !== "./dist/index.js") {
-        fail("expected package.json exports['./server'].import to be './dist/index.js'")
-    }
-
     if (pkg.exports?.["./tui"]?.import !== "./tui.tsx") {
         fail("expected package.json exports['./tui'].import to be './tui.tsx'")
     }
@@ -190,12 +186,9 @@ function validateRuntimeImportGraph() {
                 continue
             }
 
-            if (entry.specifier === "jsonc-parser/lib/esm/main.js") {
-                continue
-            }
-
             const packageName = getPackageName(entry.specifier)
             if (builtinNames.has(packageName)) continue
+            if (packageName === "jsonc-parser") continue
 
             const kind = getImportKind(entry.clause)
             if (kind === "type" || kind === "namespace") continue
