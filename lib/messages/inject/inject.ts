@@ -14,8 +14,8 @@ import {
 import { scheduleSaveSessionState } from "../../state/persistence"
 import {
     appendToTextPart,
-    appendToLastTextPart,
-    appendToAllToolParts,
+    prependToLastTextPart,
+    prependToAllToolParts,
     createSyntheticTextPart,
     hasContent,
 } from "../utils"
@@ -211,11 +211,11 @@ export const injectMessageIds = (
             continue
         }
 
-        if (appendToAllToolParts(message, tag)) {
+        if (prependToAllToolParts(message, tag)) {
             continue
         }
 
-        if (appendToLastTextPart(message, tag)) {
+        if (prependToLastTextPart(message, tag)) {
             continue
         }
 

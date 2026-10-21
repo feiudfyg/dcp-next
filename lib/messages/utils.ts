@@ -77,6 +77,15 @@ export const appendToLastTextPart = (message: WithParts, injection: string): boo
     return appendToTextPart(textPart, injection)
 }
 
+export const prependToLastTextPart = (message: WithParts, injection: string): boolean => {
+    const textPart = findLastTextPart(message)
+    if (!textPart) {
+        return false
+    }
+
+    return prependToTextPart(textPart, injection)
+}
+
 const findLastTextPart = (message: WithParts): TextPart | null => {
     for (let i = message.parts.length - 1; i >= 0; i--) {
         const part = message.parts[i]
@@ -106,25 +115,50 @@ export const appendToTextPart = (part: TextPart, injection: string): boolean => 
     return true
 }
 
-export const appendToAllToolParts = (message: WithParts, tag: string): boolean => {
+export const prependToTextPart = (part: TextPart, injection: string): boolean => {
+    if (typeof part.text !== "string") {
+        return false
+    }
+
+    const normalizedInjection = injection.replace(/^\n+/, "")
+    if (!normalizedInjection.trim()) {
+        return false
+    }
+    if (part.text.includes(normalizedInjection)) {
+        return true
+    }
+
+    part.text = part.text.length > 0 ? `${normalizedInjection}\n${part.text}` : normalizedInjection
+    return true
+}
+
+export const prependToAllToolParts = (message: WithParts, tag: string): boolean => {
     let injected = false
     for (const part of message.parts) {
         if (part.type === "tool") {
-            injected = appendToToolPart(part, tag) || injected
+            injected = prependToToolPart(part, tag) || injected
         }
     }
     return injected
 }
 
-export const appendToToolPart = (part: ToolPart, tag: string): boolean => {
+export const prependToToolPart = (part: ToolPart, tag: string): boolean => {
     if (part.state?.status !== "completed" || typeof part.state.output !== "string") {
         return false
     }
-    if (part.state.output.includes(tag)) {
+
+    const normalizedInjection = tag.replace(/^\n+/, "")
+    if (!normalizedInjection.trim()) {
+        return false
+    }
+    if (part.state.output.includes(normalizedInjection)) {
         return true
     }
 
-    part.state.output = `${part.state.output}${tag}`
+    part.state.output =
+        part.state.output.length > 0
+            ? `${normalizedInjection}\n${part.state.output}`
+            : normalizedInjection
     return true
 }
 

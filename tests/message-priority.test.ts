@@ -222,9 +222,15 @@ test("injectMessageIds injects ID into every tool output for assistant messages"
     )
     // Assistant messages: ID injected into every tool output
     assert.doesNotMatch((assistantTextOne as any).text, /dcp-message-id/)
-    assert.match((assistantToolOne as any).state.output, /m0002<\/dcp-message-id>/)
+    assert.match(
+        (assistantToolOne as any).state.output,
+        /^<dcp-message-id[^>]*>m0002<\/dcp-message-id>/,
+    )
     assert.doesNotMatch((assistantTextTwo as any).text, /dcp-message-id/)
-    assert.match((assistantToolTwo as any).state.output, /m0002<\/dcp-message-id>/)
+    assert.match(
+        (assistantToolTwo as any).state.output,
+        /^<dcp-message-id[^>]*>m0002<\/dcp-message-id>/,
+    )
 })
 
 test("injectMessageIds marks every protected user text part as BLOCKED in message mode", () => {
@@ -276,7 +282,7 @@ test("injectMessageIds marks every protected user text part as BLOCKED in messag
     assert.doesNotMatch((userTextTwo as any).text, /priority=/)
     assert.match(
         (assistantText as any).text,
-        /\n\n<dcp-message-id priority="low">m0002<\/dcp-message-id>/,
+        /^<dcp-message-id priority="low">m0002<\/dcp-message-id>/,
     )
 })
 
@@ -319,9 +325,15 @@ test("injectMessageIds injects ID into every tool output in range mode", () => {
 
     // Every tool output gets the ID
     assert.doesNotMatch((assistantTextOne as any).text, /dcp-message-id/)
-    assert.match((assistantToolOne as any).state.output, /m0002<\/dcp-message-id>/)
+    assert.match(
+        (assistantToolOne as any).state.output,
+        /^<dcp-message-id[^>]*>m0002<\/dcp-message-id>/,
+    )
     assert.doesNotMatch((assistantTextTwo as any).text, /dcp-message-id/)
-    assert.match((assistantToolTwo as any).state.output, /m0002<\/dcp-message-id>/)
+    assert.match(
+        (assistantToolTwo as any).state.output,
+        /^<dcp-message-id[^>]*>m0002<\/dcp-message-id>/,
+    )
 })
 
 test("message mode marks compress tool messages as high priority even when short", () => {
@@ -363,10 +375,13 @@ test("message mode marks compress tool messages as high priority even when short
 
     // ID injected into tool output, not the text part
     assert.doesNotMatch((assistantText as any).text, /dcp-message-id/)
-    assert.match((assistantTool as any).state.output, /m0002<\/dcp-message-id>/)
     assert.match(
         (assistantTool as any).state.output,
-        /<dcp-message-id priority="high">m0002<\/dcp-message-id>/,
+        /^<dcp-message-id[^>]*>m0002<\/dcp-message-id>/,
+    )
+    assert.match(
+        (assistantTool as any).state.output,
+        /^<dcp-message-id priority="high">m0002<\/dcp-message-id>/,
     )
 })
 
@@ -938,4 +953,35 @@ test("injectMessageIds skips assistant with empty text part (issue #463)", () =>
         "",
         "empty text part should remain untouched",
     )
+})
+
+test("injectMessageIds keeps assistant message IDs off the trailing edge", () => {
+    const sessionID = "ses_assistant_trailing_tags"
+    const messages: WithParts[] = [
+        buildMessage("msg-user-1", "user", sessionID, "Hello", 1),
+        {
+            info: {
+                id: "msg-assistant-tool",
+                role: "assistant",
+                sessionID,
+                agent: "assistant",
+                time: { created: 2 },
+            } as WithParts["info"],
+            parts: [
+                textPart("msg-assistant-tool", sessionID, "assistant-tool-text", "Working."),
+                toolPart("msg-assistant-tool", sessionID, "call-1", "bash", "tool output"),
+            ],
+        },
+        buildMessage("msg-assistant-text", "assistant", sessionID, "Final answer.", 3),
+    ]
+    const state = createSessionState()
+    const config = buildConfig("range")
+
+    assignMessageRefs(state, messages)
+    injectMessageIds(state, config, messages)
+
+    const toolOutput = (messages[1]!.parts[1] as any).state.output as string
+    const assistantText = (messages[2]!.parts[0] as any).text as string
+    assert.doesNotMatch(toolOutput, /<\/dcp-message-id>\s*$/)
+    assert.doesNotMatch(assistantText, /<\/dcp-message-id>\s*$/)
 })
