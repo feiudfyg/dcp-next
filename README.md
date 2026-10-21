@@ -4,7 +4,6 @@ Dynamic Context Pruning (DCP) is a local fork of `@local/opencode-dcp`. It reduc
 usage in OpenCode v2 by summarizing stale conversation content and pruning redundant tool
 output. It is not published to npm and does not auto-update.
 
-![DCP in action](assets/images/dcp-demo9.png)
 
 ## Requirements
 
@@ -141,6 +140,7 @@ pnpm run dcp -- --list
 
 Pruning changes the request prefix, so it can reduce prompt-cache hits. The trade-off is
 usually worthwhile in long sessions.
+According to my personal statistics, the cache-hit probability is around 95%.
 
 ## License
 
